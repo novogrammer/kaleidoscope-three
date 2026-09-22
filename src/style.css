@@ -135,6 +135,26 @@ h1 {
   font-size: 0.78rem;
 }
 
+.repository-link {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+}
+
+.repository-link a {
+  color: rgb(248 244 255 / 62%);
+  text-underline-offset: 0.2em;
+}
+
+.repository-link a:hover {
+  color: #fff;
+}
+
+.repository-link a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
 .app[data-state="error"] .start-status {
   color: #ff9fbc;
 }
