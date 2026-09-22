@@ -15,9 +15,10 @@ import {
   createFaceObservationFromBoundingBox,
   mirrorFaceObservationHorizontally,
 } from "./coordinates";
+import { calculateDetectionFrameSize } from "./detectionFrame";
 
 export const FACE_DETECTION_INTERVAL_MS = 1000 / 15;
-const INFERENCE_TIMING_SAMPLE_COUNT = 60;
+const DETECTION_TIMING_SAMPLE_COUNT = 60;
 
 const noFace = {
   center: { x: 0.5, y: 0.5 },
@@ -32,10 +33,12 @@ export class MediaPipeFaceObservationSource
   #detector: FaceDetector | null = null;
   #observation: FaceObservation = noFace;
   #video: HTMLVideoElement | null = null;
+  #detectionCanvas: HTMLCanvasElement | null = null;
+  #detectionContext: CanvasRenderingContext2D | null = null;
   #lastDetectionTimeMs = -Infinity;
   #lastVideoTime = -1;
-  readonly #inferenceTimings = import.meta.env.DEV
-    ? new TimingWindow(INFERENCE_TIMING_SAMPLE_COUNT)
+  readonly #detectionTimings = import.meta.env.DEV
+    ? new TimingWindow(DETECTION_TIMING_SAMPLE_COUNT)
     : null;
 
   async initializeImage(image: HTMLImageElement): Promise<void> {
@@ -60,8 +63,27 @@ export class MediaPipeFaceObservationSource
   async initializeVideo(video: HTMLVideoElement): Promise<void> {
     if (this.#detector !== null) return;
 
-    this.#detector = await createDetector("VIDEO");
+    const detector = await createDetector("VIDEO");
+    const detectionCanvas = document.createElement("canvas");
+    const detectionSize = calculateDetectionFrameSize(
+      video.videoWidth,
+      video.videoHeight,
+    );
+    detectionCanvas.width = detectionSize.width;
+    detectionCanvas.height = detectionSize.height;
+    const detectionContext = detectionCanvas.getContext("2d", {
+      alpha: false,
+    });
+
+    if (detectionContext === null) {
+      detector.close();
+      throw new Error("Could not create the face detection canvas context.");
+    }
+
+    this.#detector = detector;
     this.#video = video;
+    this.#detectionCanvas = detectionCanvas;
+    this.#detectionContext = detectionContext;
   }
 
   sample(elapsedSeconds: number): FaceObservation {
@@ -78,6 +100,8 @@ export class MediaPipeFaceObservationSource
     this.#detector?.close();
     this.#detector = null;
     this.#video = null;
+    this.#detectionCanvas = null;
+    this.#detectionContext = null;
     this.#observation = noFace;
     this.#lastDetectionTimeMs = -Infinity;
     this.#lastVideoTime = -1;
@@ -97,8 +121,8 @@ export class MediaPipeFaceObservationSource
 
     this.#observation = createObservation(
       detections,
-      this.#video.videoWidth,
-      this.#video.videoHeight,
+      this.#detectionCanvas?.width ?? this.#video.videoWidth,
+      this.#detectionCanvas?.height ?? this.#video.videoHeight,
       true,
     );
     this.#lastDetectionTimeMs = timestampMs;
@@ -106,34 +130,61 @@ export class MediaPipeFaceObservationSource
   }
 
   #detectForVideo(timestampMs: number): Detection[] {
-    if (this.#detector === null || this.#video === null) return [];
-
-    if (this.#inferenceTimings === null) {
-      return this.#detector.detectForVideo(this.#video, timestampMs)
-        .detections;
+    if (
+      this.#detector === null ||
+      this.#video === null ||
+      this.#detectionCanvas === null ||
+      this.#detectionContext === null
+    ) {
+      return [];
     }
 
-    const inferenceStart = performance.now();
-    const detections = this.#detector.detectForVideo(
-      this.#video,
-      timestampMs,
-    ).detections;
-    this.#recordInferenceTime(performance.now() - inferenceStart);
+    if (this.#detectionTimings === null) {
+      return this.#runDetectionPipeline(timestampMs);
+    }
+
+    const detectionStart = performance.now();
+    const detections = this.#runDetectionPipeline(timestampMs);
+    this.#recordDetectionTime(performance.now() - detectionStart);
     return detections;
   }
 
-  #recordInferenceTime(milliseconds: number): void {
-    if (this.#inferenceTimings === null) return;
-
-    const summary = this.#inferenceTimings.record(milliseconds);
+  #runDetectionPipeline(timestampMs: number): Detection[] {
     if (
-      summary.totalSampleCount % INFERENCE_TIMING_SAMPLE_COUNT !== 0
+      this.#detector === null ||
+      this.#video === null ||
+      this.#detectionCanvas === null ||
+      this.#detectionContext === null
+    ) {
+      return [];
+    }
+
+    this.#detectionContext.drawImage(
+      this.#video,
+      0,
+      0,
+      this.#detectionCanvas.width,
+      this.#detectionCanvas.height,
+    );
+
+    return this.#detector.detectForVideo(
+      this.#detectionCanvas,
+      timestampMs,
+    ).detections;
+  }
+
+  #recordDetectionTime(milliseconds: number): void {
+    if (this.#detectionTimings === null) return;
+
+    const summary = this.#detectionTimings.record(milliseconds);
+    if (
+      summary.totalSampleCount % DETECTION_TIMING_SAMPLE_COUNT !== 0
     ) {
       return;
     }
 
     console.info(
-      `[MediaPipe] inference last ${summary.sampleCount}: ` +
+      `[MediaPipe] detection pipeline last ${summary.sampleCount}: ` +
         `latest=${summary.latestMilliseconds.toFixed(1)} ms, ` +
         `average=${summary.averageMilliseconds.toFixed(1)} ms, ` +
         `max=${summary.maximumMilliseconds.toFixed(1)} ms, ` +
