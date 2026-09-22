@@ -47,15 +47,14 @@ async function start(): Promise<void> {
 
     const resize = () => {
       const viewport = renderer.resize();
-      testScene.resize(viewport.width / viewport.height);
+      testScene.resize(viewport.width, viewport.height);
     };
 
     resize();
     window.addEventListener("resize", resize);
 
     try {
-      await renderer.setAnimationLoop((time) => {
-        testScene.update(time / 1000);
+      await renderer.setAnimationLoop(() => {
         renderer.render(testScene.scene, testScene.camera);
       });
     } catch (error) {
