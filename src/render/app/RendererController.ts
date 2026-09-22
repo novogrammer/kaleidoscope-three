@@ -1,12 +1,26 @@
 import {
   ACESFilmicToneMapping,
+  ColorManagement,
+  HalfFloatType,
+  NoToneMapping,
   type Camera,
   REVISION,
+  SRGBColorSpace,
   type RenderTarget,
   type Scene,
   WebGPURenderer,
 } from "three/webgpu";
+import {
+  ExtendedSRGBColorSpace,
+  ExtendedSRGBColorSpaceImpl,
+} from "three/addons/math/ColorSpaces.js";
 import { BloomRenderPipeline } from "./BloomRenderPipeline";
+import {
+  type DisplayOutputMode,
+  type DisplayOutputPreference,
+  readDisplayOutputCapabilities,
+  shouldAttemptHdrOutput,
+} from "./displayOutput";
 
 const MAX_PIXEL_RATIO = 2;
 export const SDR_TONE_MAPPING_EXPOSURE = 1;
@@ -21,12 +35,26 @@ export type RendererViewport = {
 
 export class RendererController {
   readonly #canvas: HTMLCanvasElement;
+  readonly #outputPreference: DisplayOutputPreference;
   #renderer: WebGPURenderer | null = null;
   #backend: RendererBackend | null = null;
+  #outputMode: DisplayOutputMode | null = null;
   #bloomPipeline: BloomRenderPipeline | null = null;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    outputPreference: DisplayOutputPreference = "auto",
+  ) {
     this.#canvas = canvas;
+    this.#outputPreference = outputPreference;
+  }
+
+  get outputMode(): DisplayOutputMode {
+    if (this.#outputMode === null) {
+      throw new Error("RendererController has not been initialized.");
+    }
+
+    return this.#outputMode;
   }
 
   get backend(): RendererBackend {
@@ -42,24 +70,36 @@ export class RendererController {
 
     console.info(`three.js r${REVISION}`);
 
-    const renderer = new WebGPURenderer({
-      canvas: this.#canvas,
-      antialias: true,
-      alpha: false,
-    });
-    renderer.toneMapping = ACESFilmicToneMapping;
-    renderer.toneMappingExposure = SDR_TONE_MAPPING_EXPOSURE;
+    const capabilities = readDisplayOutputCapabilities();
+    const attemptHdr = shouldAttemptHdrOutput(
+      this.#outputPreference,
+      capabilities,
+    );
+    let hdrInitialized = attemptHdr;
+    let renderer = this.#createRenderer(attemptHdr);
 
     try {
       await renderer.init();
     } catch (error) {
       await renderer.dispose();
-      throw error;
+      if (!attemptHdr) throw error;
+
+      console.warn(
+        "HDR canvas initialization failed. Falling back to SDR output.",
+        error,
+      );
+      hdrInitialized = false;
+      renderer = this.#createRenderer(false);
+      await renderer.init();
     }
 
     const backend = renderer.backend as { isWebGPUBackend?: boolean };
     this.#renderer = renderer;
     this.#backend = backend.isWebGPUBackend === true ? "webgpu" : "webgl2";
+    this.#outputMode =
+      hdrInitialized && this.#backend === "webgpu" ? "hdr" : "sdr";
+
+    if (this.#outputMode === "sdr") this.#configureSdrOutput(renderer);
   }
 
   resize(): RendererViewport {
@@ -116,7 +156,38 @@ export class RendererController {
     this.#bloomPipeline = null;
     this.#renderer = null;
     this.#backend = null;
+    this.#outputMode = null;
     await renderer.dispose();
+  }
+
+  #createRenderer(hdr: boolean): WebGPURenderer {
+    if (hdr) {
+      ColorManagement.define({
+        [ExtendedSRGBColorSpace]: ExtendedSRGBColorSpaceImpl,
+      });
+    }
+
+    const renderer = new WebGPURenderer({
+      canvas: this.#canvas,
+      antialias: true,
+      alpha: false,
+      ...(hdr ? { outputType: HalfFloatType } : {}),
+    });
+
+    if (hdr) {
+      renderer.outputColorSpace = ExtendedSRGBColorSpace;
+      renderer.toneMapping = NoToneMapping;
+    } else {
+      this.#configureSdrOutput(renderer);
+    }
+
+    return renderer;
+  }
+
+  #configureSdrOutput(renderer: WebGPURenderer): void {
+    renderer.outputColorSpace = SRGBColorSpace;
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = SDR_TONE_MAPPING_EXPOSURE;
   }
 
   #requireRenderer(): WebGPURenderer {

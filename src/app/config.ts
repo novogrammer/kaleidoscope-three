@@ -1,3 +1,8 @@
+import {
+  DISPLAY_OUTPUT_PREFERENCES,
+  type DisplayOutputPreference,
+} from "../render/app/displayOutput";
+
 export const INPUT_MODES = ["camera", "fixture"] as const;
 export const FIXTURE_NAMES = ["face-center", "face-offset", "no-face"] as const;
 export const MOCK_MODES = ["center", "enter-exit", "move"] as const;
@@ -13,6 +18,7 @@ export type AppConfig = {
   fixture: FixtureName;
   mock: MockMode | null;
   faceScale: FaceScaleMode;
+  output: DisplayOutputPreference;
 };
 
 export function parseAppConfig(search: string): AppConfig {
@@ -25,6 +31,8 @@ export function parseAppConfig(search: string): AppConfig {
     mock: readValue(parameters, "mock", MOCK_MODES),
     faceScale:
       readValue(parameters, "faceScale", FACE_SCALE_MODES) ?? "dynamic",
+    output:
+      readValue(parameters, "output", DISPLAY_OUTPUT_PREFERENCES) ?? "auto",
   };
 }
 

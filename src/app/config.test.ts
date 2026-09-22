@@ -9,6 +9,7 @@ describe("parseAppConfig", () => {
       fixture: "face-center",
       mock: null,
       faceScale: "dynamic",
+      output: "auto",
     });
   });
 
@@ -18,6 +19,7 @@ describe("parseAppConfig", () => {
       fixture: "face-center",
       mock: null,
       faceScale: "dynamic",
+      output: "auto",
     });
   });
 
@@ -29,11 +31,17 @@ describe("parseAppConfig", () => {
       fixture: "face-offset",
       mock: "enter-exit",
       faceScale: "dynamic",
+      output: "auto",
     });
   });
 
   it("can restore Unity-compatible fixed face scaling", () => {
     expect(parseAppConfig("?faceScale=fixed").faceScale).toBe("fixed");
+  });
+
+  it("accepts explicit HDR and SDR output overrides", () => {
+    expect(parseAppConfig("?output=hdr").output).toBe("hdr");
+    expect(parseAppConfig("?output=sdr").output).toBe("sdr");
   });
 
   it("falls back from unsupported values", () => {
@@ -44,6 +52,7 @@ describe("parseAppConfig", () => {
       fixture: "face-center",
       mock: null,
       faceScale: "dynamic",
+      output: "auto",
     });
   });
 });

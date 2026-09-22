@@ -231,6 +231,7 @@ WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端�
 | `fixture` | `face-center`, `face-offset`, `no-face` | 使用する静止画fixtureを選択する |
 | `mock` | `center`, `enter-exit`, `move` | 指定時だけMediaPipeを省略し、モック顔情報へ切り替える |
 | `faceScale` | `dynamic`, `fixed` | 主レイヤーの三角形サイズを顔サイズへ連動、またはUnity版と同じ固定値へ切り替える |
+| `output` | `auto`, `sdr`, `hdr` | HDR出力の自動選択、SDR固定、WebGPU HDRの強制確認を切り替える |
 
 省略時の動作は次のとおり。
 
@@ -238,6 +239,7 @@ WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端�
 - `input=fixture`で`fixture`を省略した場合は`face-center`とする。
 - `mock`省略時は、選択した画像入力に対してMediaPipe Face Detectorを使用する。
 - `faceScale`省略時は`dynamic`とする。顔の高さ`0.4`を基準倍率`1.0`とし、平滑化した高さに応じて主レイヤーの単位長だけを`0.6〜1.5`倍する。円形マスク半径は変更しない。Unity版と同じ固定サイズを比較するときは`fixed`を指定する。
+- `output`省略時は`auto`とする。WebGPUが利用でき、`(dynamic-range: high)`が真の環境ではHDR、それ以外ではSDRを使用する。`sdr`は比較用のSDR固定、`hdr`は表示能力のMedia QueryにかかわらずWebGPU HDR初期化を試す診断用とする。
 
 代表的な組み合わせは次のとおり。
 
@@ -293,6 +295,8 @@ MediaPipeとモック入力のどちらを使っても、描画側はこの共�
 
 HDRを利用できない環境では、特別な高品質基準やHDR相当の眩しさまでは保証しない。SDRとして普通に閲覧でき、カメラ画像、紙吹雪、万華鏡、発光感が判別でき、極端な白飛び、黒潰れ、色化けなどで主要表現が破綻しないことを最低保証とする。
 
+HDRディスプレイ出力では、WebGPU canvasの出力型を`HalfFloatType`、出力色空間を`ExtendedSRGBColorSpace`に設定する。HDR値はOSとディスプレイの拡張レンジへ渡すため、three.js側のトーンマッピングは適用しない。WebGPUを利用できない場合、HDR canvasの初期化に失敗した場合、または自動選択時に`(dynamic-range: high)`が偽の場合は、sRGB＋ACES exposure `1.0`のSDR出力へフォールバックする。実行中の出力モードは画面上にHDRまたはSDRとして表示する。
+
 ### ポストプロセス
 
 - `RenderPipeline`とTSLベースのポストプロセスを第一候補とする。
@@ -302,6 +306,7 @@ HDRを利用できない環境では、特別な高品質基準やHDR相当の�
 - 色空間変換と出力変換は処理経路の最後に一度だけ適用する。
 - 初期のBloomパラメーターはUnity版を基準にするが、アルゴリズム差があるため数値一致ではなく視覚比較で調整する。
 - HDR表示とSDR表示で出力変換を分ける。
+- HDR表示では`ExtendedSRGBColorSpace`へ変換し、`1.0`を超える値をcanvasまで保持する。SDR表示だけACESトーンマッピングを適用する。
 
 ### 紙吹雪
 

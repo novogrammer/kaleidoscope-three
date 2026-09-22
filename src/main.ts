@@ -15,6 +15,7 @@ const startButton = getElement<HTMLButtonElement>("start-button");
 const startStatus = getElement<HTMLElement>("start-status");
 const runtimeStatus = getElement<HTMLElement>("runtime-status");
 const backendStatus = getElement<HTMLElement>("backend-status");
+const outputStatus = getElement<HTMLElement>("output-status");
 const inputStatus = getElement<HTMLElement>("input-status");
 
 const config = parseAppConfig(window.location.search);
@@ -59,7 +60,7 @@ async function start(): Promise<void> {
         ? import("./face/MediaPipeFaceObservationSource")
         : Promise.resolve(null),
     ]);
-    const renderer = new RendererController(canvas);
+    const renderer = new RendererController(canvas, config.output);
     const fixtureSource =
       config.input === "fixture"
         ? new FixtureImageSource(config.fixture)
@@ -182,6 +183,8 @@ async function start(): Promise<void> {
 
     backendStatus.textContent =
       renderer.backend === "webgpu" ? "描画: WebGPU" : "描画: WebGL 2";
+    outputStatus.textContent =
+      renderer.outputMode === "hdr" ? "出力: HDR" : "出力: SDR";
     runtimeStatus.hidden = false;
     startScreen.hidden = true;
     app.dataset.state = "running";
