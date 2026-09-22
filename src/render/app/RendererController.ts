@@ -1,6 +1,7 @@
 import {
   type Camera,
   REVISION,
+  type RenderTarget,
   type Scene,
   WebGPURenderer,
 } from "three/webgpu";
@@ -69,6 +70,13 @@ export class RendererController {
 
   render(scene: Scene, camera: Camera): void {
     this.#requireRenderer().render(scene, camera);
+  }
+
+  renderToTarget(scene: Scene, camera: Camera, target: RenderTarget): void {
+    const renderer = this.#requireRenderer();
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
   }
 
   setAnimationLoop(

@@ -73,7 +73,11 @@ async function start(): Promise<void> {
 
       resize = () => {
         const viewport = renderer.resize();
-        testScene?.resize(viewport.width, viewport.height);
+        testScene?.resize(
+          viewport.width,
+          viewport.height,
+          viewport.pixelRatio,
+        );
       };
 
       resize();
@@ -87,7 +91,12 @@ async function start(): Promise<void> {
             elapsedSeconds,
             faceObservation,
           );
-          testScene.update(frame);
+          testScene.update(elapsedSeconds, frame);
+          renderer.renderToTarget(
+            testScene.sourceScene,
+            testScene.sourceCamera,
+            testScene.sourceTarget,
+          );
           renderer.render(testScene.scene, testScene.camera);
         }
       });
