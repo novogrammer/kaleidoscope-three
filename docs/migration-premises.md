@@ -142,10 +142,13 @@ Volume Profileで確認できる主要な値は次のとおり。
 
 ### Webカメラと顔検出
 
-- Webカメラは`navigator.mediaDevices.getUserMedia()`を利用する想定とする。
+- 前面カメラを使用し、`navigator.mediaDevices.getUserMedia()`へ`facingMode: "user"`を指定する。
 - カメラ利用にはHTTPSまたはlocalhost、ユーザー許可、開始のためのユーザージェスチャーが必要になる。
-- 顔検出ライブラリは未決定。Unity版と同じTFLiteモデルをWebで動かす案と、Web向けMediaPipeを利用する案を比較する。
+- 顔検出には`@mediapipe/tasks-vision`の`FaceDetector`と、前面カメラの近距離撮影向けに最適化された`BlazeFace (short-range)`を使用する。
+- `FaceDetector`が返す顔矩形から中心座標を求め、万華鏡の中心へ渡す。6点の簡易ランドマークは基本的に使用しない。
 - 初期移植で必要なのは顔矩形または顔中心であり、顔メッシュ全点の再現は必須としない。
+- 描画更新と顔検出の頻度を分離し、顔検出は10〜15fps程度を初期値とする。必要に応じてWeb Workerの利用を検討する。
+- カメラ映像は鏡のように左右反転して表示する。CSSやシェーダーによる表示上の反転と、検出結果の座標変換を混同しない。
 - カメラを拒否した場合や顔を検出できない場合でも、補助レイヤーによって表示が継続できるようにする。
 
 ### HDRの定義
@@ -188,7 +191,7 @@ Volume Profileで確認できる主要な値は次のとおり。
 | Volume Bloom | TSL Bloomノード |
 | URP Tonemapping | three.jsのトーンマッピングまたは独自出力ノード |
 | WebCam Texture | `getUserMedia()`と`VideoTexture` |
-| TFLite Unity | MediaPipe WebまたはWeb向けTFLiteランタイム |
+| TFLite Unityの顔検出・顔ランドマーク | MediaPipe Face Detector＋BlazeFace short-range |
 | `HDROutputSettings` | Canvas/WebGPUのHDR出力設定と能力検出 |
 
 この表は概念上の対応であり、APIの一対一変換を意味しない。
@@ -231,7 +234,6 @@ Volume Profileで確認できる主要な値は次のとおり。
 ## 未決定事項
 
 - 対象ブラウザ、OS、GPU、モバイル対応範囲
-- 顔検出に使用するWebライブラリとモデル
 - HDR非対応環境で保証する最低品質
 - Unity版との一致基準を、ピクセル一致とするか視覚的同等性とするか
 - 輝度警告、開始確認、輝度制限をどのUIで提供するか
@@ -244,3 +246,5 @@ Volume Profileで確認できる主要な値は次のとおり。
 - [Post-Processing with WebGPURenderer](https://threejs.org/manual/en/webgpu-postprocessing.html)
 - [three.js WebGPU HDR example](https://threejs.org/examples/webgpu_hdr.html)
 - [Unity URP HDR output](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/post-processing/hdr-output.html)
+- [MediaPipe Face Detector](https://developers.google.com/edge/mediapipe/solutions/vision/face_detector)
+- [MediaPipe Face Detector for Web](https://developers.google.com/edge/mediapipe/solutions/vision/face_detector/web_js)
