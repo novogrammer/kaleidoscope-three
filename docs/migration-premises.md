@@ -232,6 +232,7 @@ WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端�
 | `mock` | `center`, `enter-exit`, `move` | 指定時だけMediaPipeを省略し、モック顔情報へ切り替える |
 | `faceScale` | `dynamic`, `fixed` | 主レイヤーの三角形サイズを顔サイズへ連動、またはUnity版と同じ固定値へ切り替える |
 | `output` | `auto`, `sdr`, `hdr` | HDR出力の自動選択、SDR固定、WebGPU HDRの強制確認を切り替える |
+| `backend` | `auto`, `webgl2` | レンダラーバックエンドの自動選択、またはWebGL 2固定を切り替える |
 
 省略時の動作は次のとおり。
 
@@ -240,6 +241,7 @@ WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端�
 - `mock`省略時は、選択した画像入力に対してMediaPipe Face Detectorを使用する。
 - `faceScale`省略時は`dynamic`とする。顔の高さ`0.4`を基準倍率`1.0`とし、平滑化した高さに応じて主レイヤーの単位長だけを`0.6〜1.5`倍する。円形マスク半径は変更しない。Unity版と同じ固定サイズを比較するときは`fixed`を指定する。
 - `output`省略時は`auto`とする。WebGPUが利用でき、`(dynamic-range: high)`が真の環境ではHDR、それ以外ではSDRを使用する。`sdr`は比較用のSDR固定、`hdr`は表示能力のMedia QueryにかかわらずWebGPU HDR初期化を試す診断用とする。
+- `backend`省略時は`auto`とし、WebGPUを優先して利用できない場合はWebGL 2へフォールバックする。`webgl2`指定時はthree.jsの`forceWebGL`を有効にし、WebGPU対応環境でもWebGL 2＋SDR経路を検証できるようにする。`output=hdr`と同時に指定した場合も`backend=webgl2`を優先し、出力はSDRとする。
 
 代表的な組み合わせは次のとおり。
 
@@ -258,6 +260,9 @@ WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端�
 
 ?input=camera
   前面カメラによる本番相当の手動確認
+
+?input=fixture&fixture=face-center&mock=center&backend=webgl2
+  WebGPU対応環境でWebGL 2＋SDRフォールバックを固定して確認
 ```
 
 通常の開発とCodexによる軽い検証では`input=fixture`を使用する。通常利用時のカメラは、開始画面で利用者が明示的に開始した後だけ起動する。

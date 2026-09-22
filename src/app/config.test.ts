@@ -10,6 +10,7 @@ describe("parseAppConfig", () => {
       mock: null,
       faceScale: "dynamic",
       output: "auto",
+      backend: "auto",
     });
   });
 
@@ -20,6 +21,7 @@ describe("parseAppConfig", () => {
       mock: null,
       faceScale: "dynamic",
       output: "auto",
+      backend: "auto",
     });
   });
 
@@ -32,6 +34,7 @@ describe("parseAppConfig", () => {
       mock: "enter-exit",
       faceScale: "dynamic",
       output: "auto",
+      backend: "auto",
     });
   });
 
@@ -44,6 +47,10 @@ describe("parseAppConfig", () => {
     expect(parseAppConfig("?output=sdr").output).toBe("sdr");
   });
 
+  it("can force the WebGL 2 renderer backend", () => {
+    expect(parseAppConfig("?backend=webgl2").backend).toBe("webgl2");
+  });
+
   it("falls back from unsupported values", () => {
     expect(
       parseAppConfig("?input=video&fixture=unknown&mock=random"),
@@ -53,6 +60,7 @@ describe("parseAppConfig", () => {
       mock: null,
       faceScale: "dynamic",
       output: "auto",
+      backend: "auto",
     });
   });
 });

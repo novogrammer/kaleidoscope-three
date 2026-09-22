@@ -21,6 +21,7 @@ import {
   readDisplayOutputCapabilities,
   shouldAttemptHdrOutput,
 } from "./displayOutput";
+import type { RendererBackendPreference } from "./rendererBackend";
 
 const MAX_PIXEL_RATIO = 2;
 export const SDR_TONE_MAPPING_EXPOSURE = 1;
@@ -36,6 +37,7 @@ export type RendererViewport = {
 export class RendererController {
   readonly #canvas: HTMLCanvasElement;
   readonly #outputPreference: DisplayOutputPreference;
+  readonly #backendPreference: RendererBackendPreference;
   #renderer: WebGPURenderer | null = null;
   #backend: RendererBackend | null = null;
   #outputMode: DisplayOutputMode | null = null;
@@ -44,9 +46,11 @@ export class RendererController {
   constructor(
     canvas: HTMLCanvasElement,
     outputPreference: DisplayOutputPreference = "auto",
+    backendPreference: RendererBackendPreference = "auto",
   ) {
     this.#canvas = canvas;
     this.#outputPreference = outputPreference;
+    this.#backendPreference = backendPreference;
   }
 
   get outputMode(): DisplayOutputMode {
@@ -71,10 +75,10 @@ export class RendererController {
     console.info(`three.js r${REVISION}`);
 
     const capabilities = readDisplayOutputCapabilities();
-    const attemptHdr = shouldAttemptHdrOutput(
-      this.#outputPreference,
-      capabilities,
-    );
+    const forceWebGl = this.#backendPreference === "webgl2";
+    const attemptHdr =
+      !forceWebGl &&
+      shouldAttemptHdrOutput(this.#outputPreference, capabilities);
     let hdrInitialized = attemptHdr;
     let renderer = this.#createRenderer(attemptHdr);
 
@@ -171,6 +175,7 @@ export class RendererController {
       canvas: this.#canvas,
       antialias: true,
       alpha: false,
+      forceWebGL: this.#backendPreference === "webgl2",
       ...(hdr ? { outputType: HalfFloatType } : {}),
     });
 

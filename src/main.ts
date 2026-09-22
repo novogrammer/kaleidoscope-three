@@ -60,7 +60,11 @@ async function start(): Promise<void> {
         ? import("./face/MediaPipeFaceObservationSource")
         : Promise.resolve(null),
     ]);
-    const renderer = new RendererController(canvas, config.output);
+    const renderer = new RendererController(
+      canvas,
+      config.output,
+      config.backend,
+    );
     const fixtureSource =
       config.input === "fixture"
         ? new FixtureImageSource(config.fixture)
