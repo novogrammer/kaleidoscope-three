@@ -133,10 +133,12 @@ Volume Profileで確認できる主要な値は次のとおり。
 ### レンダラーとシェーダー
 
 - `WebGPURenderer`を第一候補とする。
+- WebGPUを利用できない環境に向けて、WebGL 2バックエンドへのフォールバックを対応範囲に含める。
 - ShaderLab、Shader Graph、HLSLを直接流用せず、TSL（Three.js Shading Language）へ移植する。
 - 万華鏡処理はTSL関数として分割し、UnityのFull Screen Passに相当する画面パスとして構成する。
 - three.jsとTSLはAPI変更があり得るため、実装開始時にバージョンを固定する。
-- WebGL 2バックエンドでのフォールバック可否も検証するが、HDRディスプレイ出力まで同等にできるとは前提にしない。
+- WebGPUとWebGL 2で可能な限り同じTSL実装とアプリケーションロジックを共有する。
+- WebGL 2では万華鏡、紙吹雪、顔追跡、HDR内部処理、SDR出力までを対象とする。HDRディスプレイ出力までWebGPUと同等になることは前提にしない。
 
 ### Webカメラと顔検出
 
@@ -166,9 +168,11 @@ Volume Profileで確認できる主要な値は次のとおり。
 
 ### 紙吹雪
 
-- Unity VFX Graphの挙動を、WebGPUのComputeまたはGPU更新型パーティクルで再構成する。
+- Unity VFX Graphの挙動は、WebGPU ComputeやGPGPUに依存しない方式で再構成する。
 - 最初からVFX Graph全体を機械的に変換せず、見た目に寄与するパラメーターと更新式を抽出する。
-- WebGL 2フォールバックが必要な場合は、CPU更新またはテクスチャベースGPGPUを別経路として検討する。
+- WebGPUとWebGL 2で共通利用できる実装を優先する。
+- パーティクル状態はCPUで更新し、`InstancedMesh`でまとめて描画する。
+- パーティクル数はUnity版の容量`1000`を初期上限とし、CPU更新方式で十分な性能が得られるか検証する。
 
 ## Unityからthree.jsへの対応
 
@@ -180,7 +184,7 @@ Volume Profileで確認できる主要な値は次のとおり。
 | Material Properties | uniformノードとアプリケーション状態 |
 | `_Time` | 時間ノードまたは毎フレーム更新するuniform |
 | `_ScreenParams` | viewport sizeとpixel ratio |
-| VFX Graph | WebGPU Compute／GPUパーティクル |
+| VFX Graph | CPU更新＋`InstancedMesh` |
 | Volume Bloom | TSL Bloomノード |
 | URP Tonemapping | three.jsのトーンマッピングまたは独自出力ノード |
 | WebCam Texture | `getUserMedia()`と`VideoTexture` |
@@ -221,6 +225,7 @@ Volume Profileで確認できる主要な値は次のとおり。
 - SDR環境で自然にトーンマッピングされる。
 - 対応環境ではHDR出力の有効化と判定を確認できる。
 - カメラ拒否、顔未検出、WebGPU非対応時の挙動が定義されている。
+- WebGPU非対応時にWebGL 2へフォールバックし、HDRディスプレイ出力を除く主要表現が維持される。
 - リサイズ、高DPI、主要なデスクトップブラウザで破綻しない。
 
 ## 未決定事項
@@ -228,7 +233,6 @@ Volume Profileで確認できる主要な値は次のとおり。
 - 対象ブラウザ、OS、GPU、モバイル対応範囲
 - 顔検出に使用するWebライブラリとモデル
 - HDR非対応環境で保証する最低品質
-- WebGL 2フォールバックで紙吹雪まで再現するか
 - Unity版との一致基準を、ピクセル一致とするか視覚的同等性とするか
 - 輝度警告、開始確認、輝度制限をどのUIで提供するか
 - HDR表示検証に使用する基準ディスプレイと撮影・測定方法
