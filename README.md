@@ -5,9 +5,9 @@ Codexを利用して移植を行うが、任せきりにしない。<br>
 <br>
 Unity版 https://github.com/novogrammer/KaleidoscopeUnityHdr
 
-## MediaPipe確認用アセット
+## MediaPipeアセット
 
-`mediapipe-check` は、実行時にCDNやモデル配布元へ依存しない構成にする。
+本体と`mediapipe-check`は、実行時にCDNやモデル配布元へ依存しない構成にする。
 
 - 顔検出モデル: `src/mediapipe-check/assets/blaze_face_short_range.tflite`
 - 取得元: https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite

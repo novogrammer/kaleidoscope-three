@@ -1,8 +1,10 @@
 import "./style.css";
 
 import { parseAppConfig } from "./app/config";
+import type { FaceObservationSource } from "./face/FaceObservationSource";
 import { MockFaceObservationSource } from "./face/MockFaceObservationSource";
 import { NoFaceObservationSource } from "./face/NoFaceObservationSource";
+import { mapSourceObservationToAspectCoordinates } from "./face/coordinates";
 import { calculateKaleidoscopeFrameState } from "./kaleidoscope/state";
 
 const app = getElement<HTMLElement>("app");
@@ -44,27 +46,42 @@ async function start(): Promise<void> {
       { TestScene },
       { FixtureImageSource },
       { TestPatternImageSource },
+      mediaPipeModule,
     ] = await Promise.all([
       import("./render/app/RendererController"),
       import("./render/app/TestScene"),
       import("./input/images/FixtureImageSource"),
       import("./input/images/TestPatternImageSource"),
+      config.input === "fixture" && config.mock === null
+        ? import("./face/MediaPipeFaceObservationSource")
+        : Promise.resolve(null),
     ]);
     const renderer = new RendererController(canvas);
-    const imageSource =
+    const fixtureSource =
       config.input === "fixture"
         ? new FixtureImageSource(config.fixture)
-        : new TestPatternImageSource();
-    const faceObservationSource =
-      config.mock === null
-        ? new NoFaceObservationSource()
-        : new MockFaceObservationSource(config.mock);
+        : null;
+    const imageSource = fixtureSource ?? new TestPatternImageSource();
+    let faceObservationSource: FaceObservationSource & {
+      dispose?: () => void;
+    } = new NoFaceObservationSource();
     let testScene: InstanceType<typeof TestScene> | null = null;
     let resize: (() => void) | null = null;
     let animationStartTime: number | null = null;
+    let viewportWidth = 1;
+    let viewportHeight = 1;
 
     try {
       await Promise.all([renderer.initialize(), imageSource.initialize()]);
+      if (config.mock !== null) {
+        faceObservationSource = new MockFaceObservationSource(config.mock);
+      } else if (fixtureSource !== null && mediaPipeModule !== null) {
+        startStatus.textContent = "顔を検出しています…";
+        const mediaPipeSource =
+          new mediaPipeModule.MediaPipeFaceObservationSource();
+        await mediaPipeSource.initialize(fixtureSource.image);
+        faceObservationSource = mediaPipeSource;
+      }
       testScene = new TestScene(
         imageSource.texture,
         imageSource.width,
@@ -74,6 +91,8 @@ async function start(): Promise<void> {
 
       resize = () => {
         const viewport = renderer.resize();
+        viewportWidth = viewport.width;
+        viewportHeight = viewport.height;
         testScene?.resize(
           viewport.width,
           viewport.height,
@@ -87,7 +106,15 @@ async function start(): Promise<void> {
         if (testScene !== null) {
           animationStartTime ??= time;
           const elapsedSeconds = (time - animationStartTime) / 1000;
-          const faceObservation = faceObservationSource.sample(elapsedSeconds);
+          const sourceObservation =
+            faceObservationSource.sample(elapsedSeconds);
+          const faceObservation = mapSourceObservationToAspectCoordinates(
+            sourceObservation,
+            viewportWidth,
+            viewportHeight,
+            imageSource.width,
+            imageSource.height,
+          );
           const frame = calculateKaleidoscopeFrameState(
             elapsedSeconds,
             faceObservation,
@@ -104,6 +131,7 @@ async function start(): Promise<void> {
     } catch (error) {
       if (resize !== null) window.removeEventListener("resize", resize);
       testScene?.dispose();
+      faceObservationSource.dispose?.();
       imageSource.dispose();
       await renderer.dispose();
       throw error;
@@ -120,6 +148,7 @@ async function start(): Promise<void> {
       () => {
         if (resize !== null) window.removeEventListener("resize", resize);
         testScene?.dispose();
+        faceObservationSource.dispose?.();
         imageSource.dispose();
         void renderer.dispose();
       },
@@ -139,7 +168,7 @@ function formatInputStatus(value: ReturnType<typeof parseAppConfig>): string {
   if (value.input === "camera") return "入力設定: 前面カメラ（未接続）";
 
   const mock =
-    value.mock === null ? "顔検出未接続" : `モック / ${value.mock}`;
+    value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
   return `入力設定: ${value.fixture} / ${mock}`;
 }
 
