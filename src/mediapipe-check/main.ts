@@ -3,11 +3,13 @@ import {
   FilesetResolver,
   type FaceDetectorResult,
 } from "@mediapipe/tasks-vision";
+import wasmSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_internal.wasm?url";
+import wasmSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_internal.js?url";
+import wasmNoSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url";
+import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
 
 import "./style.css";
 
-const MEDIAPIPE_VERSION = "1.0.1";
-const WASM_ROOT = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
 const MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
 const DETECTION_INTERVAL_MS = 1000 / 15;
@@ -62,7 +64,7 @@ async function start(): Promise<void> {
     drawFrame();
 
     setStatus("MediaPipeを初期化しています…");
-    const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
+    const vision = await createVisionFileset();
     detector = await FaceDetector.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath: MODEL_URL,
@@ -183,6 +185,20 @@ function waitForVideoDimensions(source: HTMLVideoElement): Promise<void> {
   return new Promise((resolve) => {
     source.addEventListener("loadedmetadata", () => resolve(), { once: true });
   });
+}
+
+async function createVisionFileset() {
+  const isSimdSupported = await FilesetResolver.isSimdSupported();
+
+  return isSimdSupported
+    ? {
+        wasmLoaderPath: wasmSimdLoaderPath,
+        wasmBinaryPath: wasmSimdBinaryPath,
+      }
+    : {
+        wasmLoaderPath: wasmNoSimdLoaderPath,
+        wasmBinaryPath: wasmNoSimdBinaryPath,
+      };
 }
 
 function setStatus(message: string): void {
