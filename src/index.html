@@ -3,9 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>kaleidoscope-three</title>
+    <meta
+      name="description"
+      content="前面カメラの映像を使ったHDR対応の顔万華鏡"
+    />
+    <title>顔万華鏡</title>
   </head>
   <body>
+    <main id="app" class="app">
+      <canvas
+        id="stage"
+        class="stage"
+        aria-label="顔万華鏡の描画画面"
+      ></canvas>
+
+      <section id="start-screen" class="start-screen" aria-labelledby="title">
+        <div class="start-panel">
+          <p class="eyebrow">FACE KALEIDOSCOPE</p>
+          <h1 id="title">顔万華鏡</h1>
+          <p class="warning">
+            この作品には、強い光や点滅を伴う映像表現が含まれます。明るい部屋で画面から離れてご覧ください。気分が悪くなった場合は、すぐに閲覧を中止してください。
+          </p>
+          <button id="start-button" class="start-button" type="button">
+            はじめる
+          </button>
+          <p id="start-status" class="start-status" aria-live="polite">
+            ボタンを押すと描画を開始します
+          </p>
+        </div>
+      </section>
+
+      <div id="runtime-status" class="runtime-status" hidden>
+        <span id="backend-status">描画を準備中</span>
+        <span id="input-status">入力設定を確認中</span>
+      </div>
+    </main>
+
+    <noscript>この作品を表示するにはJavaScriptを有効にしてください。</noscript>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
