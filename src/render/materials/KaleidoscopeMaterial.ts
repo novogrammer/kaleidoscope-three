@@ -1,5 +1,5 @@
 import { MeshBasicNodeMaterial, Vector2, type Texture } from "three/webgpu";
-import { texture, uniform, uv, vec4 } from "three/tsl";
+import { texture, uniform, uv, vec2, vec4 } from "three/tsl";
 import {
   aspectCoordinateToUvTsl,
   calculateCircleMaskTsl,
@@ -40,7 +40,8 @@ export class KaleidoscopeMaterial extends MeshBasicNodeMaterial {
         this.#resolution.x,
         this.#resolution.y,
       );
-      const sampledColor = texture(sourceTexture, viewportUv);
+      const sourceUv = vec2(viewportUv.x, viewportUv.y.oneMinus());
+      const sampledColor = texture(sourceTexture, sourceUv);
       const mask = calculateCircleMaskTsl(
         aspectCoordinate,
         this.#centers[index],
