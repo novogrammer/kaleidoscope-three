@@ -5,7 +5,7 @@ import type { FaceObservationSource } from "./face/FaceObservationSource";
 import { MockFaceObservationSource } from "./face/MockFaceObservationSource";
 import { NoFaceObservationSource } from "./face/NoFaceObservationSource";
 import { mapSourceObservationToAspectCoordinates } from "./face/coordinates";
-import { calculateKaleidoscopeFrameState } from "./kaleidoscope/state";
+import { KaleidoscopeStateController } from "./kaleidoscope/state";
 
 const app = getElement<HTMLElement>("app");
 const canvas = getElement<HTMLCanvasElement>("stage");
@@ -70,6 +70,7 @@ async function start(): Promise<void> {
     let animationStartTime: number | null = null;
     let viewportWidth = 1;
     let viewportHeight = 1;
+    const kaleidoscopeState = new KaleidoscopeStateController();
 
     try {
       await Promise.all([renderer.initialize(), imageSource.initialize()]);
@@ -115,7 +116,7 @@ async function start(): Promise<void> {
             imageSource.width,
             imageSource.height,
           );
-          const frame = calculateKaleidoscopeFrameState(
+          const frame = kaleidoscopeState.update(
             elapsedSeconds,
             faceObservation,
           );
