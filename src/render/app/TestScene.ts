@@ -5,18 +5,19 @@ import {
   Scene,
   type Texture,
 } from "three/webgpu";
-import { KaleidoscopeTestMaterial } from "../materials/KaleidoscopeTestMaterial";
+import type { KaleidoscopeFrameState } from "../../kaleidoscope/state";
+import { KaleidoscopeMaterial } from "../materials/KaleidoscopeMaterial";
 
 export class TestScene {
   readonly scene = new Scene();
   readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
 
-  readonly #material: KaleidoscopeTestMaterial;
+  readonly #material: KaleidoscopeMaterial;
   readonly #geometry = new PlaneGeometry(2, 2);
   readonly #quad: Mesh;
 
   constructor(sourceTexture: Texture) {
-    this.#material = new KaleidoscopeTestMaterial(sourceTexture);
+    this.#material = new KaleidoscopeMaterial(sourceTexture);
     this.#quad = new Mesh(this.#geometry, this.#material);
     this.camera.position.z = 2;
     this.scene.add(this.#quad);
@@ -24,6 +25,10 @@ export class TestScene {
 
   resize(width: number, height: number): void {
     this.#material.setResolution(width, height);
+  }
+
+  update(frame: KaleidoscopeFrameState): void {
+    this.#material.updateFrame(frame);
   }
 
   dispose(): void {

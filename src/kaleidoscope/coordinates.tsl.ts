@@ -124,7 +124,7 @@ export function calculateCircleMaskTsl(
 ): FloatNode {
   const normalizedDistance = length(coordinate.sub(center))
     .sub(minimumRadius)
-    .div(maximumRadius.sub(minimumRadius))
+    .div(maximumRadius.sub(minimumRadius).max(0.000001))
     .clamp(0, 1);
 
   return normalizedDistance.oneMinus().pow(2);

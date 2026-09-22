@@ -1,6 +1,9 @@
 import "./style.css";
 
 import { parseAppConfig } from "./app/config";
+import { MockFaceObservationSource } from "./face/MockFaceObservationSource";
+import { NoFaceObservationSource } from "./face/NoFaceObservationSource";
+import { calculateKaleidoscopeFrameState } from "./kaleidoscope/state";
 
 const app = getElement<HTMLElement>("app");
 const canvas = getElement<HTMLCanvasElement>("stage");
@@ -52,8 +55,13 @@ async function start(): Promise<void> {
       config.input === "fixture"
         ? new FixtureImageSource(config.fixture)
         : new TestPatternImageSource();
+    const faceObservationSource =
+      config.mock === null
+        ? new NoFaceObservationSource()
+        : new MockFaceObservationSource(config.mock);
     let testScene: InstanceType<typeof TestScene> | null = null;
     let resize: (() => void) | null = null;
+    let animationStartTime: number | null = null;
 
     try {
       await Promise.all([renderer.initialize(), imageSource.initialize()]);
@@ -66,8 +74,16 @@ async function start(): Promise<void> {
 
       resize();
       window.addEventListener("resize", resize);
-      await renderer.setAnimationLoop(() => {
+      await renderer.setAnimationLoop((time) => {
         if (testScene !== null) {
+          animationStartTime ??= time;
+          const elapsedSeconds = (time - animationStartTime) / 1000;
+          const faceObservation = faceObservationSource.sample(elapsedSeconds);
+          const frame = calculateKaleidoscopeFrameState(
+            elapsedSeconds,
+            faceObservation,
+          );
+          testScene.update(frame);
           renderer.render(testScene.scene, testScene.camera);
         }
       });
@@ -108,7 +124,8 @@ async function start(): Promise<void> {
 function formatInputStatus(value: ReturnType<typeof parseAppConfig>): string {
   if (value.input === "camera") return "入力設定: 前面カメラ（未接続）";
 
-  const mock = value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
+  const mock =
+    value.mock === null ? "顔検出未接続" : `モック / ${value.mock}`;
   return `入力設定: ${value.fixture} / ${mock}`;
 }
 
