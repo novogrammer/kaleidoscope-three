@@ -10,7 +10,12 @@ import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_int
 import modelAssetPath from "../mediapipe-check/assets/blaze_face_short_range.tflite?url";
 import type { FaceObservation } from "./FaceObservation";
 import type { FaceObservationSource } from "./FaceObservationSource";
-import { createFaceObservationFromBoundingBox } from "./coordinates";
+import {
+  createFaceObservationFromBoundingBox,
+  mirrorFaceObservationHorizontally,
+} from "./coordinates";
+
+export const FACE_DETECTION_INTERVAL_MS = 1000 / 15;
 
 const noFace = {
   center: { x: 0.5, y: 0.5 },
@@ -24,41 +29,22 @@ export class MediaPipeFaceObservationSource
 {
   #detector: FaceDetector | null = null;
   #observation: FaceObservation = noFace;
+  #video: HTMLVideoElement | null = null;
+  #lastDetectionTimeMs = -Infinity;
+  #lastVideoTime = -1;
 
-  async initialize(image: HTMLImageElement): Promise<void> {
+  async initializeImage(image: HTMLImageElement): Promise<void> {
     if (this.#detector !== null) return;
 
-    const vision = await createVisionFileset();
-    const detector = await FaceDetector.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath,
-        delegate: "CPU",
-      },
-      runningMode: "IMAGE",
-      minDetectionConfidence: 0.5,
-      minSuppressionThreshold: 0.3,
-    });
+    const detector = await createDetector("IMAGE");
 
     try {
-      const detections = detector.detect(image).detections;
-      const bestDetection = detections.reduce<(typeof detections)[number] | null>(
-        (best, candidate) =>
-          best === null || confidenceOf(candidate) > confidenceOf(best)
-            ? candidate
-            : best,
-        null,
+      this.#observation = createObservation(
+        detector.detect(image).detections,
+        image.naturalWidth,
+        image.naturalHeight,
+        false,
       );
-      const box = bestDetection?.boundingBox;
-
-      this.#observation =
-        bestDetection !== null && bestDetection !== undefined && box
-          ? createFaceObservationFromBoundingBox(
-              box,
-              confidenceOf(bestDetection),
-              image.naturalWidth,
-              image.naturalHeight,
-            )
-          : noFace;
       this.#detector = detector;
     } catch (error) {
       detector.close();
@@ -66,7 +52,16 @@ export class MediaPipeFaceObservationSource
     }
   }
 
-  sample(): FaceObservation {
+  async initializeVideo(video: HTMLVideoElement): Promise<void> {
+    if (this.#detector !== null) return;
+
+    this.#detector = await createDetector("VIDEO");
+    this.#video = video;
+  }
+
+  sample(elapsedSeconds: number): FaceObservation {
+    this.#detectVideoFrame(elapsedSeconds * 1000);
+
     return {
       ...this.#observation,
       center: { ...this.#observation.center },
@@ -77,7 +72,30 @@ export class MediaPipeFaceObservationSource
   dispose(): void {
     this.#detector?.close();
     this.#detector = null;
+    this.#video = null;
     this.#observation = noFace;
+    this.#lastDetectionTimeMs = -Infinity;
+    this.#lastVideoTime = -1;
+  }
+
+  #detectVideoFrame(timestampMs: number): void {
+    if (
+      this.#detector === null ||
+      this.#video === null ||
+      timestampMs - this.#lastDetectionTimeMs < FACE_DETECTION_INTERVAL_MS ||
+      this.#video.currentTime === this.#lastVideoTime
+    ) {
+      return;
+    }
+
+    this.#observation = createObservation(
+      this.#detector.detectForVideo(this.#video, timestampMs).detections,
+      this.#video.videoWidth,
+      this.#video.videoHeight,
+      true,
+    );
+    this.#lastDetectionTimeMs = timestampMs;
+    this.#lastVideoTime = this.#video.currentTime;
   }
 }
 
@@ -97,4 +115,49 @@ async function createVisionFileset() {
 
 function confidenceOf(detection: Detection): number {
   return detection.categories[0]?.score ?? 0;
+}
+
+async function createDetector(
+  runningMode: "IMAGE" | "VIDEO",
+): Promise<FaceDetector> {
+  const vision = await createVisionFileset();
+
+  return FaceDetector.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath,
+      delegate: "CPU",
+    },
+    runningMode,
+    minDetectionConfidence: 0.5,
+    minSuppressionThreshold: 0.3,
+  });
+}
+
+function createObservation(
+  detections: Detection[],
+  sourceWidth: number,
+  sourceHeight: number,
+  mirrorHorizontally: boolean,
+): FaceObservation {
+  const bestDetection = detections.reduce<Detection | null>(
+    (best, candidate) =>
+      best === null || confidenceOf(candidate) > confidenceOf(best)
+        ? candidate
+        : best,
+    null,
+  );
+  const box = bestDetection?.boundingBox;
+
+  if (bestDetection === null || !box) return noFace;
+
+  const observation = createFaceObservationFromBoundingBox(
+    box,
+    confidenceOf(bestDetection),
+    sourceWidth,
+    sourceHeight,
+  );
+
+  return mirrorHorizontally
+    ? mirrorFaceObservationHorizontally(observation)
+    : observation;
 }

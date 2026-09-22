@@ -3,6 +3,7 @@ import type { FaceObservation } from "./FaceObservation";
 import {
   createFaceObservationFromBoundingBox,
   mapSourceObservationToAspectCoordinates,
+  mirrorFaceObservationHorizontally,
 } from "./coordinates";
 
 const sourceObservation = {
@@ -57,5 +58,13 @@ describe("face coordinate conversion", () => {
     expect(mapped.center.y).toBeCloseTo(0.75);
     expect(mapped.size.width).toBeCloseTo(0.2);
     expect(mapped.size.height).toBeCloseTo(0.4);
+  });
+
+  it("mirrors a camera observation without changing its size", () => {
+    expect(mirrorFaceObservationHorizontally(sourceObservation)).toEqual({
+      ...sourceObservation,
+      center: { x: 0.25, y: 0.75 },
+      size: { ...sourceObservation.size },
+    });
   });
 });

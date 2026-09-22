@@ -5,6 +5,7 @@ import type { FaceObservationSource } from "./face/FaceObservationSource";
 import { MockFaceObservationSource } from "./face/MockFaceObservationSource";
 import { NoFaceObservationSource } from "./face/NoFaceObservationSource";
 import { mapSourceObservationToAspectCoordinates } from "./face/coordinates";
+import type { ImageSource } from "./input/images/ImageSource";
 import { KaleidoscopeStateController } from "./kaleidoscope/state";
 
 const app = getElement<HTMLElement>("app");
@@ -44,15 +45,17 @@ async function start(): Promise<void> {
     const [
       { RendererController },
       { TestScene },
+      { CameraImageSource },
       { FixtureImageSource },
       { TestPatternImageSource },
       mediaPipeModule,
     ] = await Promise.all([
       import("./render/app/RendererController"),
       import("./render/app/TestScene"),
+      import("./input/images/CameraImageSource"),
       import("./input/images/FixtureImageSource"),
       import("./input/images/TestPatternImageSource"),
-      config.input === "fixture" && config.mock === null
+      config.mock === null
         ? import("./face/MediaPipeFaceObservationSource")
         : Promise.resolve(null),
     ]);
@@ -61,7 +64,11 @@ async function start(): Promise<void> {
       config.input === "fixture"
         ? new FixtureImageSource(config.fixture)
         : null;
-    const imageSource = fixtureSource ?? new TestPatternImageSource();
+    const cameraSource =
+      config.input === "camera" ? new CameraImageSource() : null;
+    let imageSource: ImageSource =
+      fixtureSource ?? cameraSource ?? new TestPatternImageSource();
+    let cameraAvailable = false;
     let faceObservationSource: FaceObservationSource & {
       dispose?: () => void;
     } = new NoFaceObservationSource();
@@ -73,20 +80,53 @@ async function start(): Promise<void> {
     const kaleidoscopeState = new KaleidoscopeStateController();
 
     try {
-      await Promise.all([renderer.initialize(), imageSource.initialize()]);
+      await renderer.initialize();
+      if (cameraSource !== null) {
+        startStatus.textContent = "前面カメラを初期化しています…";
+        try {
+          await cameraSource.initialize();
+          cameraAvailable = true;
+        } catch (cameraError) {
+          console.warn(
+            "Camera input is unavailable. Using the fallback texture.",
+            cameraError,
+          );
+          imageSource = new TestPatternImageSource();
+          await imageSource.initialize();
+          inputStatus.textContent = "入力設定: カメラ利用不可 / 補助表示";
+        }
+      } else {
+        await imageSource.initialize();
+      }
+
       if (config.mock !== null) {
         faceObservationSource = new MockFaceObservationSource(config.mock);
-      } else if (fixtureSource !== null && mediaPipeModule !== null) {
+      } else if (mediaPipeModule !== null) {
         startStatus.textContent = "顔を検出しています…";
         const mediaPipeSource =
           new mediaPipeModule.MediaPipeFaceObservationSource();
-        await mediaPipeSource.initialize(fixtureSource.image);
-        faceObservationSource = mediaPipeSource;
+        try {
+          if (fixtureSource !== null) {
+            await mediaPipeSource.initializeImage(fixtureSource.image);
+            faceObservationSource = mediaPipeSource;
+          } else if (cameraSource !== null && cameraAvailable) {
+            await mediaPipeSource.initializeVideo(cameraSource.video);
+            faceObservationSource = mediaPipeSource;
+          }
+        } catch (mediaPipeError) {
+          mediaPipeSource.dispose();
+          console.warn(
+            "Face detection is unavailable. Continuing without it.",
+            mediaPipeError,
+          );
+          inputStatus.textContent = "入力設定: 顔検出利用不可 / 補助表示";
+        }
       }
       testScene = new TestScene(
         imageSource.texture,
         imageSource.width,
         imageSource.height,
+        cameraAvailable,
       );
       renderer.configureBloom(testScene.scene, testScene.camera);
 
@@ -166,7 +206,10 @@ async function start(): Promise<void> {
 }
 
 function formatInputStatus(value: ReturnType<typeof parseAppConfig>): string {
-  if (value.input === "camera") return "入力設定: 前面カメラ（未接続）";
+  if (value.input === "camera") {
+    const face = value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
+    return `入力設定: 前面カメラ / ${face}`;
+  }
 
   const mock =
     value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;

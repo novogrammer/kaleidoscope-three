@@ -57,3 +57,16 @@ export function mapSourceObservationToAspectCoordinates(
     },
   };
 }
+
+export function mirrorFaceObservationHorizontally(
+  observation: FaceObservation,
+): FaceObservation {
+  return {
+    ...observation,
+    center: {
+      x: 1 - observation.center.x,
+      y: observation.center.y,
+    },
+    size: { ...observation.size },
+  };
+}

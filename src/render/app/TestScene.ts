@@ -31,11 +31,17 @@ export class TestScene {
   readonly #confetti = new ConfettiInstancedMesh();
   #aspect = 1;
 
-  constructor(sourceTexture: Texture, sourceWidth: number, sourceHeight: number) {
+  constructor(
+    sourceTexture: Texture,
+    sourceWidth: number,
+    sourceHeight: number,
+    mirrorSourceHorizontally = false,
+  ) {
     this.#sourceMaterial = new SourceImageMaterial(
       sourceTexture,
       sourceWidth,
       sourceHeight,
+      mirrorSourceHorizontally,
     );
     this.#sourceQuad = new Mesh(this.#sourceGeometry, this.#sourceMaterial);
     this.#sourceQuad.renderOrder = 0;

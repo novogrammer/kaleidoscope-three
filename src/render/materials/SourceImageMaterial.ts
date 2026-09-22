@@ -1,12 +1,17 @@
 import { MeshBasicNodeMaterial, Vector2, type Texture } from "three/webgpu";
-import { texture, uniform, uv, vec4 } from "three/tsl";
+import { texture, uniform, uv, vec2, vec4 } from "three/tsl";
 import { coverUvTsl } from "../../kaleidoscope/coordinates.tsl";
 
 export class SourceImageMaterial extends MeshBasicNodeMaterial {
   readonly #resolution = uniform(new Vector2(1, 1));
   readonly #sourceSize = uniform(new Vector2(1, 1));
 
-  constructor(sourceTexture: Texture, sourceWidth: number, sourceHeight: number) {
+  constructor(
+    sourceTexture: Texture,
+    sourceWidth: number,
+    sourceHeight: number,
+    mirrorHorizontally = false,
+  ) {
     super();
 
     this.#sourceSize.value.set(sourceWidth, sourceHeight);
@@ -18,7 +23,11 @@ export class SourceImageMaterial extends MeshBasicNodeMaterial {
       this.#sourceSize.y,
     );
 
-    this.colorNode = vec4(texture(sourceTexture, sampleUv).rgb, 1);
+    const sourceUv = mirrorHorizontally
+      ? vec2(sampleUv.x.oneMinus(), sampleUv.y)
+      : sampleUv;
+
+    this.colorNode = vec4(texture(sourceTexture, sourceUv).rgb, 1);
     this.depthTest = false;
     this.depthWrite = false;
     this.toneMapped = false;
