@@ -7,11 +7,10 @@ import wasmSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_internal.was
 import wasmSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_internal.js?url";
 import wasmNoSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url";
 import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
+import modelAssetPath from "./assets/blaze_face_short_range.tflite?url";
 
 import "./style.css";
 
-const MODEL_URL =
-  "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
 const DETECTION_INTERVAL_MS = 1000 / 15;
 
 const video = getElement<HTMLVideoElement>("source");
@@ -67,7 +66,7 @@ async function start(): Promise<void> {
     const vision = await createVisionFileset();
     detector = await FaceDetector.createFromOptions(vision, {
       baseOptions: {
-        modelAssetPath: MODEL_URL,
+        modelAssetPath,
         delegate: "CPU",
       },
       runningMode: "VIDEO",
