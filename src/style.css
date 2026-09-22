@@ -97,6 +97,11 @@ h1 {
   text-wrap: pretty;
 }
 
+.warning-translation {
+  display: block;
+  margin-top: 0.8em;
+}
+
 .start-button {
   min-width: 180px;
   padding: 14px 28px;
