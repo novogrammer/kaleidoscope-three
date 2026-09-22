@@ -136,9 +136,29 @@ Volume Profileで確認できる主要な値は次のとおり。
 - WebGPUを利用できない環境に向けて、WebGL 2バックエンドへのフォールバックを対応範囲に含める。
 - ShaderLab、Shader Graph、HLSLを直接流用せず、TSL（Three.js Shading Language）へ移植する。
 - 万華鏡処理はTSL関数として分割し、UnityのFull Screen Passに相当する画面パスとして構成する。
-- three.jsとTSLはAPI変更があり得るため、実装開始時にバージョンを固定する。
+- three.jsは実装開始時点の最新安定版を採用し、そのバージョンに固定する。
 - WebGPUとWebGL 2で可能な限り同じTSL実装とアプリケーションロジックを共有する。
 - WebGL 2では万華鏡、紙吹雪、顔追跡、HDR内部処理、SDR出力までを対象とする。HDRディスプレイ出力までWebGPUと同等になることは前提にしない。
+
+### 開発環境
+
+- Vite
+- TypeScript
+- Vitest
+- Vitestはブラウザを必要としないロジックの単体テストを中心に使用する。
+- 依存パッケージの具体的なバージョンは、実装開始時の互換性を確認して固定する。
+
+### 対象ブラウザ
+
+次のブラウザを対応対象とする。具体的な最低バージョンは未決定とする。
+
+- デスクトップ版Google Chrome
+- デスクトップ版Safari
+- デスクトップ版Firefox
+- Android版Google Chrome
+- iOS版Safari
+
+WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端末によって異なるため、すべての対象で同一機能を前提としない。WebGPUを利用できない場合はWebGL 2へ、HDRディスプレイ出力を利用できない場合はSDR出力へフォールバックする。
 
 ### Webカメラと顔検出
 
@@ -199,6 +219,8 @@ Volume Profileで確認できる主要な値は次のとおり。
 - 正面に1人の顔がある基準画像
 - 顔がない画像
 - 顔が画面中央から外れた画像
+
+従来の画像処理で使われてきたLena／Lenna画像は採用しない。元画像の再配布条件が明確なfixture向けライセンスではなく、被写体本人も利用終了を望んでいる。fixtureには、生成した架空人物の顔写真、または再配布と改変が明確に許諾された画像を使用する。具体的な画像は未決定とする。
 
 顔検出と描画を直接結合せず、検出結果を正規化した共通データとして描画側へ渡す。
 
@@ -288,6 +310,8 @@ Codexによるブラウザ操作、画面キャプチャ、画像の目視確認
 - 固定時刻と固定乱数seedを使った、パーティクル状態の再現性テスト
 - 万華鏡の座標計算について、既知の入力と出力を比較するテスト
 
+これらの単体テストにはVitestを使用する。
+
 TSL上でのみ動く処理についても、可能な範囲で同じ数式のCPU参照実装または代表値を用意し、ブラウザを使わずに座標やパラメーターを検証できるようにする。
 
 ### ブラウザ確認を行う節目
@@ -344,7 +368,8 @@ TSL上でのみ動く処理についても、可能な範囲で同じ数式のCP
 
 ## 未決定事項
 
-- 対象ブラウザ、OS、GPU、モバイル対応範囲
+- 対象ブラウザの最低バージョンと、保証対象とするOS／GPUの範囲
+- fixtureに使用する、再配布可能な顔画像
 - HDR非対応環境で保証する最低品質
 - Unity版との一致基準を、ピクセル一致とするか視覚的同等性とするか
 - 輝度警告、開始確認、輝度制限をどのUIで提供するか
@@ -359,3 +384,5 @@ TSL上でのみ動く処理についても、可能な範囲で同じ数式のCP
 - [Unity URP HDR output](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/post-processing/hdr-output.html)
 - [MediaPipe Face Detector](https://developers.google.com/edge/mediapipe/solutions/vision/face_detector)
 - [MediaPipe Face Detector for Web](https://developers.google.com/edge/mediapipe/solutions/vision/face_detector/web_js)
+- [Vitest](https://vitest.dev/guide/)
+- [IEEE Author Center: Lena Image](https://conferences.ieeeauthorcenter.ieee.org/write-your-paper/improve-your-graphics/)
