@@ -159,4 +159,34 @@ describe("KaleidoscopeStateController", () => {
       oneStepFrame.layers[0].center.y,
     );
   });
+
+  it("keeps the Unity unit length when face-size scaling is disabled", () => {
+    const controller = new KaleidoscopeStateController();
+    const largeFace = {
+      ...detectedFace,
+      size: { ...detectedFace.size, height: 0.8 },
+    };
+
+    controller.update(0, largeFace);
+    const frame = controller.update(1, largeFace);
+
+    expect(frame.layers[0].unitLength).toBeCloseTo(0.65);
+  });
+
+  it("smoothly scales the main unit length with face height when enabled", () => {
+    const controller = new KaleidoscopeStateController({
+      scaleMainLayerWithFaceSize: true,
+    });
+    const largeFace = {
+      ...detectedFace,
+      size: { ...detectedFace.size, height: 0.6 },
+    };
+
+    controller.update(0, detectedFace);
+    controller.update(1, detectedFace);
+    controller.update(1, largeFace);
+    const frame = controller.update(1.1, largeFace);
+
+    expect(frame.layers[0].unitLength).toBeCloseTo(0.65 * 1.25);
+  });
 });

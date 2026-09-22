@@ -229,12 +229,14 @@ WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端�
 | `input` | `camera`, `fixture` | 画像入力を前面カメラまたは静止画へ切り替える |
 | `fixture` | `face-center`, `face-offset`, `no-face` | 使用する静止画fixtureを選択する |
 | `mock` | `center`, `enter-exit`, `move` | 指定時だけMediaPipeを省略し、モック顔情報へ切り替える |
+| `faceScale` | `dynamic`, `fixed` | 主レイヤーの三角形サイズを顔サイズへ連動、またはUnity版と同じ固定値へ切り替える |
 
 省略時の動作は次のとおり。
 
 - `input`省略時は`camera`とする。ただしカメラを即座に起動せず、開始画面で利用者が操作した後に権限を要求する。
 - `input=fixture`で`fixture`を省略した場合は`face-center`とする。
 - `mock`省略時は、選択した画像入力に対してMediaPipe Face Detectorを使用する。
+- `faceScale`省略時は`dynamic`とする。顔の高さ`0.4`を基準倍率`1.0`とし、平滑化した高さに応じて主レイヤーの単位長だけを`0.6〜1.5`倍する。円形マスク半径は変更しない。Unity版と同じ固定サイズを比較するときは`fixed`を指定する。
 
 代表的な組み合わせは次のとおり。
 
@@ -247,6 +249,9 @@ WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端�
 
 ?input=fixture&fixture=face-center&mock=enter-exit
   同じ顔写真を背景に使い、検出・喪失と1秒フェードを再現
+
+?input=camera&faceScale=fixed
+  Unity版と同じ固定サイズで比較
 
 ?input=camera
   前面カメラによる本番相当の手動確認

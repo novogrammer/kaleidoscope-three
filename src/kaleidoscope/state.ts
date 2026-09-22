@@ -24,13 +24,28 @@ const dummyUnitLengthMaximum = 0.2;
 const mainRadiusMaximum = 1;
 const mainUnitLengthMaximum = 0.65;
 const minimumUnitLength = 0.0001;
+const referenceFaceHeight = 0.4;
+const minimumFaceSizeScale = 0.6;
+const maximumFaceSizeScale = 1.5;
+
+export type KaleidoscopeStateOptions = Readonly<{
+  scaleMainLayerWithFaceSize?: boolean;
+}>;
 
 export class KaleidoscopeStateController {
+  readonly #scaleMainLayerWithFaceSize: boolean;
   #fadeFactor = 0;
   #previousElapsedSeconds: number | null = null;
   #hasDetectedFace = false;
   #targetCenter = { x: 0.5, y: 0.5 };
   #smoothedCenter = { x: 0.5, y: 0.5 };
+  #targetFaceHeight = referenceFaceHeight;
+  #smoothedFaceHeight = referenceFaceHeight;
+
+  constructor(options: KaleidoscopeStateOptions = {}) {
+    this.#scaleMainLayerWithFaceSize =
+      options.scaleMainLayerWithFaceSize ?? false;
+  }
 
   update(
     elapsedSeconds: number,
@@ -43,9 +58,11 @@ export class KaleidoscopeStateController {
 
     if (face.detected) {
       this.#targetCenter = { ...face.center };
+      this.#targetFaceHeight = face.size.height;
 
       if (!this.#hasDetectedFace) {
         this.#smoothedCenter = { ...face.center };
+        this.#smoothedFaceHeight = face.size.height;
         this.#hasDetectedFace = true;
       }
     }
@@ -58,6 +75,11 @@ export class KaleidoscopeStateController {
       x: lerp(this.#smoothedCenter.x, this.#targetCenter.x, smoothingFactor),
       y: lerp(this.#smoothedCenter.y, this.#targetCenter.y, smoothingFactor),
     };
+    this.#smoothedFaceHeight = lerp(
+      this.#smoothedFaceHeight,
+      this.#targetFaceHeight,
+      smoothingFactor,
+    );
 
     const target = face.detected ? 1 : 0;
     const maximumChange = deltaSeconds / FACE_FADE_DURATION_SECONDS;
@@ -75,6 +97,9 @@ export class KaleidoscopeStateController {
         center: { ...this.#smoothedCenter },
       },
       this.#fadeFactor,
+      this.#scaleMainLayerWithFaceSize
+        ? calculateFaceSizeScale(this.#smoothedFaceHeight)
+        : 1,
     );
   }
 }
@@ -83,6 +108,7 @@ export function calculateKaleidoscopeFrameState(
   elapsedSeconds: number,
   face: FaceObservation,
   mainFadeFactor = face.detected ? 1 : 0,
+  mainUnitLengthScale = 1,
 ): KaleidoscopeFrameState {
   const rotation = angularVelocity * elapsedSeconds;
   const sine = Math.sin(rotation);
@@ -96,7 +122,9 @@ export function calculateKaleidoscopeFrameState(
         radiusMinimum: 0,
         radiusMaximum: mainFadeFactor * mainRadiusMaximum,
         unitLength: Math.max(
-          easeOutSine(mainFadeFactor) * mainUnitLengthMaximum,
+          easeOutSine(mainFadeFactor) *
+            mainUnitLengthMaximum *
+            mainUnitLengthScale,
           minimumUnitLength,
         ),
       },
@@ -104,6 +132,14 @@ export function calculateKaleidoscopeFrameState(
       createAuxiliaryLayer(cosine, { x: 0.9, y: 0.1 }, { x: 0.1, y: 0.9 }),
     ],
   };
+}
+
+function calculateFaceSizeScale(faceHeight: number): number {
+  return clamp(
+    faceHeight / referenceFaceHeight,
+    minimumFaceSizeScale,
+    maximumFaceSizeScale,
+  );
 }
 
 function exponentialSmoothingFactor(
@@ -115,6 +151,10 @@ function exponentialSmoothingFactor(
 
 function lerp(start: number, end: number, factor: number): number {
   return start + (end - start) * factor;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(Math.max(value, minimum), maximum);
 }
 
 function easeOutSine(value: number): number {

@@ -77,7 +77,9 @@ async function start(): Promise<void> {
     let animationStartTime: number | null = null;
     let viewportWidth = 1;
     let viewportHeight = 1;
-    const kaleidoscopeState = new KaleidoscopeStateController();
+    const kaleidoscopeState = new KaleidoscopeStateController({
+      scaleMainLayerWithFaceSize: config.faceScale === "dynamic",
+    });
 
     try {
       await renderer.initialize();
@@ -206,14 +208,17 @@ async function start(): Promise<void> {
 }
 
 function formatInputStatus(value: ReturnType<typeof parseAppConfig>): string {
+  const faceScale =
+    value.faceScale === "dynamic" ? " / 顔サイズ連動" : "";
+
   if (value.input === "camera") {
     const face = value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
-    return `入力設定: 前面カメラ / ${face}`;
+    return `入力設定: 前面カメラ / ${face}${faceScale}`;
   }
 
   const mock =
     value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
-  return `入力設定: ${value.fixture} / ${mock}`;
+  return `入力設定: ${value.fixture} / ${mock}${faceScale}`;
 }
 
 function getElement<T extends HTMLElement>(id: string): T {

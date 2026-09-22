@@ -8,6 +8,7 @@ describe("parseAppConfig", () => {
       input: "camera",
       fixture: "face-center",
       mock: null,
+      faceScale: "dynamic",
     });
   });
 
@@ -16,6 +17,7 @@ describe("parseAppConfig", () => {
       input: "fixture",
       fixture: "face-center",
       mock: null,
+      faceScale: "dynamic",
     });
   });
 
@@ -26,7 +28,12 @@ describe("parseAppConfig", () => {
       input: "fixture",
       fixture: "face-offset",
       mock: "enter-exit",
+      faceScale: "dynamic",
     });
+  });
+
+  it("can restore Unity-compatible fixed face scaling", () => {
+    expect(parseAppConfig("?faceScale=fixed").faceScale).toBe("fixed");
   });
 
   it("falls back from unsupported values", () => {
@@ -36,6 +43,7 @@ describe("parseAppConfig", () => {
       input: "camera",
       fixture: "face-center",
       mock: null,
+      faceScale: "dynamic",
     });
   });
 });
