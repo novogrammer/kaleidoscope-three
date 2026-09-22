@@ -40,3 +40,15 @@ https://github.com/novogrammer/KaleidoscopeUnityHdr
 正面向きの成人、遮蔽のない顔、均一な照明、明るめのベージュからオリーブ系の肌を指定した。鏡映や回転方向を判別しやすくするため、背景の左右に青と珊瑚色の差を設けている。
 
 `source-assets/`はViteの`root`である`src/`の外に置き、生成元や編集用アセットだけを管理する。ここにあるファイルはアプリからimportせず、ビルド成果物へ含めない。
+
+## OGP画像
+
+- 配置先: `public/ogp.jpg`
+- 形式: JPEG、1200 × 630、SDR
+- 撮影条件: `?input=fixture&mock=center&output=sdr&backend=webgl2`
+- 使用素材: `face-center.jpg`とアプリの実描画
+- 候補画像: `source-assets/ogp/ogp-candidate-01.jpg`、`source-assets/ogp/ogp-candidate-02-later.jpg`
+- 採用画像: `ogp-candidate-02-later.jpg`
+
+実画面を固定fixtureで撮影し、ステータス表示だけを除いている。HDRディスプレイやWebカメラ入力に依存せず、同じ見え方を確認できる条件にしている。
+第1候補は開始約3.5秒後、第2候補は開始約7秒後に撮影した。候補画像はViteの配信対象外に置き、採用画像だけを`public/ogp.jpg`へ配置する。
