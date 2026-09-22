@@ -70,6 +70,7 @@ async function start(): Promise<void> {
         imageSource.width,
         imageSource.height,
       );
+      renderer.configureBloom(testScene.scene, testScene.camera);
 
       resize = () => {
         const viewport = renderer.resize();
@@ -97,7 +98,7 @@ async function start(): Promise<void> {
             testScene.sourceCamera,
             testScene.sourceTarget,
           );
-          renderer.render(testScene.scene, testScene.camera);
+          renderer.renderBloom();
         }
       });
     } catch (error) {

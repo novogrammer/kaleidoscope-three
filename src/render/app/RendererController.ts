@@ -5,6 +5,7 @@ import {
   type Scene,
   WebGPURenderer,
 } from "three/webgpu";
+import { BloomRenderPipeline } from "./BloomRenderPipeline";
 
 const MAX_PIXEL_RATIO = 2;
 
@@ -20,6 +21,7 @@ export class RendererController {
   readonly #canvas: HTMLCanvasElement;
   #renderer: WebGPURenderer | null = null;
   #backend: RendererBackend | null = null;
+  #bloomPipeline: BloomRenderPipeline | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.#canvas = canvas;
@@ -72,6 +74,23 @@ export class RendererController {
     this.#requireRenderer().render(scene, camera);
   }
 
+  configureBloom(scene: Scene, camera: Camera): void {
+    this.#bloomPipeline?.dispose();
+    this.#bloomPipeline = new BloomRenderPipeline(
+      this.#requireRenderer(),
+      scene,
+      camera,
+    );
+  }
+
+  renderBloom(): void {
+    if (this.#bloomPipeline === null) {
+      throw new Error("Bloom pipeline has not been configured.");
+    }
+
+    this.#bloomPipeline.render();
+  }
+
   renderToTarget(scene: Scene, camera: Camera, target: RenderTarget): void {
     const renderer = this.#requireRenderer();
     renderer.setRenderTarget(target);
@@ -89,6 +108,8 @@ export class RendererController {
     if (this.#renderer === null) return;
 
     const renderer = this.#renderer;
+    this.#bloomPipeline?.dispose();
+    this.#bloomPipeline = null;
     this.#renderer = null;
     this.#backend = null;
     await renderer.dispose();

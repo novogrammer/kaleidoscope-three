@@ -281,6 +281,7 @@ HDRを利用できない環境では、特別な高品質基準やHDR相当の�
 ### ポストプロセス
 
 - `RenderPipeline`とTSLベースのポストプロセスを第一候補とする。
+- Bloomにはthree.js公式AddonのTSL `BloomNode`を使用する。初期値はUnity版を基準に、strength `0.25`、radius `0.5`、threshold `1.0`とする。
 - Bloomはトーンマッピングより前のHDR値に適用する。
 - 色空間変換と出力変換は処理経路の最後に一度だけ適用する。
 - 初期のBloomパラメーターはUnity版を基準にするが、アルゴリズム差があるため数値一致ではなく視覚比較で調整する。
