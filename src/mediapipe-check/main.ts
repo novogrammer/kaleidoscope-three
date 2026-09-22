@@ -4,7 +4,7 @@ import {
   type FaceDetectorResult,
 } from "@mediapipe/tasks-vision";
 
-import "./mediapipe-check.css";
+import "./style.css";
 
 const MEDIAPIPE_VERSION = "1.0.1";
 const WASM_ROOT = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
