@@ -17,7 +17,7 @@ https://github.com/novogrammer/KaleidoscopeUnityHdr
 
 本体と`mediapipe-check`は、実行時にCDNやモデル配布元へ依存しない構成にする。
 
-- 顔検出モデル: `src/mediapipe-check/assets/blaze_face_short_range.tflite`
+- 顔検出モデル: `src/assets/models/blaze_face_short_range.tflite`
 - 取得元: https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite
 - 配布バージョン: `float16/1`
 - SHA-256: `b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f`
