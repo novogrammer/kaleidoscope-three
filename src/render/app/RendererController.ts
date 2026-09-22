@@ -1,4 +1,5 @@
 import {
+  ACESFilmicToneMapping,
   type Camera,
   REVISION,
   type RenderTarget,
@@ -8,6 +9,7 @@ import {
 import { BloomRenderPipeline } from "./BloomRenderPipeline";
 
 const MAX_PIXEL_RATIO = 2;
+export const SDR_TONE_MAPPING_EXPOSURE = 0.25;
 
 export type RendererBackend = "webgpu" | "webgl2";
 
@@ -45,6 +47,8 @@ export class RendererController {
       antialias: true,
       alpha: false,
     });
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = SDR_TONE_MAPPING_EXPOSURE;
 
     try {
       await renderer.init();
