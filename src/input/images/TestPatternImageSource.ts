@@ -2,9 +2,11 @@ import {
   DataTexture,
   NearestFilter,
   RGBAFormat,
-  SRGBColorSpace,
   UnsignedByteType,
+  SRGBColorSpace,
+  type Texture,
 } from "three/webgpu";
+import type { ImageSource } from "./ImageSource";
 
 const textureSize = 256;
 const cellSize = 32;
@@ -18,6 +20,32 @@ const palette = [
   [150, 100, 255],
   [255, 100, 210],
 ] as const;
+
+export class TestPatternImageSource implements ImageSource {
+  readonly #texture = new DataTexture(
+    buildTestPattern(),
+    textureSize,
+    textureSize,
+    RGBAFormat,
+    UnsignedByteType,
+  );
+
+  get texture(): Texture {
+    return this.#texture;
+  }
+
+  async initialize(): Promise<void> {
+    this.#texture.colorSpace = SRGBColorSpace;
+    this.#texture.magFilter = NearestFilter;
+    this.#texture.minFilter = NearestFilter;
+    this.#texture.generateMipmaps = false;
+    this.#texture.needsUpdate = true;
+  }
+
+  dispose(): void {
+    this.#texture.dispose();
+  }
+}
 
 function buildTestPattern(): Uint8Array {
   const data = new Uint8Array(textureSize * textureSize * 4);
@@ -40,22 +68,4 @@ function buildTestPattern(): Uint8Array {
   }
 
   return data;
-}
-
-export class TestPatternTexture extends DataTexture {
-  constructor() {
-    super(
-      buildTestPattern(),
-      textureSize,
-      textureSize,
-      RGBAFormat,
-      UnsignedByteType,
-    );
-
-    this.colorSpace = SRGBColorSpace;
-    this.magFilter = NearestFilter;
-    this.minFilter = NearestFilter;
-    this.generateMipmaps = false;
-    this.needsUpdate = true;
-  }
 }

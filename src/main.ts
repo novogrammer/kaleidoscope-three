@@ -36,30 +36,45 @@ async function start(): Promise<void> {
   startStatus.textContent = "描画を初期化しています…";
 
   try {
-    const [{ RendererController }, { TestScene }] =
-      await Promise.all([
-        import("./render/app/RendererController"),
-        import("./render/app/TestScene"),
-      ]);
+    const [
+      { RendererController },
+      { TestScene },
+      { FixtureImageSource },
+      { TestPatternImageSource },
+    ] = await Promise.all([
+      import("./render/app/RendererController"),
+      import("./render/app/TestScene"),
+      import("./input/images/FixtureImageSource"),
+      import("./input/images/TestPatternImageSource"),
+    ]);
     const renderer = new RendererController(canvas);
-    await renderer.initialize();
-    const testScene = new TestScene();
-
-    const resize = () => {
-      const viewport = renderer.resize();
-      testScene.resize(viewport.width, viewport.height);
-    };
-
-    resize();
-    window.addEventListener("resize", resize);
+    const imageSource =
+      config.input === "fixture"
+        ? new FixtureImageSource(config.fixture)
+        : new TestPatternImageSource();
+    let testScene: InstanceType<typeof TestScene> | null = null;
+    let resize: (() => void) | null = null;
 
     try {
+      await Promise.all([renderer.initialize(), imageSource.initialize()]);
+      testScene = new TestScene(imageSource.texture);
+
+      resize = () => {
+        const viewport = renderer.resize();
+        testScene?.resize(viewport.width, viewport.height);
+      };
+
+      resize();
+      window.addEventListener("resize", resize);
       await renderer.setAnimationLoop(() => {
-        renderer.render(testScene.scene, testScene.camera);
+        if (testScene !== null) {
+          renderer.render(testScene.scene, testScene.camera);
+        }
       });
     } catch (error) {
-      window.removeEventListener("resize", resize);
-      testScene.dispose();
+      if (resize !== null) window.removeEventListener("resize", resize);
+      testScene?.dispose();
+      imageSource.dispose();
       await renderer.dispose();
       throw error;
     }
@@ -73,8 +88,9 @@ async function start(): Promise<void> {
     window.addEventListener(
       "pagehide",
       () => {
-        window.removeEventListener("resize", resize);
-        testScene.dispose();
+        if (resize !== null) window.removeEventListener("resize", resize);
+        testScene?.dispose();
+        imageSource.dispose();
         void renderer.dispose();
       },
       { once: true },
