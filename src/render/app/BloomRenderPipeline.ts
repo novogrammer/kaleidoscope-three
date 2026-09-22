@@ -7,8 +7,8 @@ import {
 import { pass } from "three/tsl";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 
-export const BLOOM_STRENGTH = 0.25;
-export const BLOOM_RADIUS = 0.5;
+export const BLOOM_STRENGTH = 0.1;
+export const BLOOM_RADIUS = 0.1;
 export const BLOOM_THRESHOLD = 1;
 
 export class BloomRenderPipeline {

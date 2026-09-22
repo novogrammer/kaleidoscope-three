@@ -9,7 +9,7 @@ import {
 import { BloomRenderPipeline } from "./BloomRenderPipeline";
 
 const MAX_PIXEL_RATIO = 2;
-export const SDR_TONE_MAPPING_EXPOSURE = 0.25;
+export const SDR_TONE_MAPPING_EXPOSURE = 1;
 
 export type RendererBackend = "webgpu" | "webgl2";
 

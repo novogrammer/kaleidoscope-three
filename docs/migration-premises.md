@@ -281,9 +281,9 @@ HDRを利用できない環境では、特別な高品質基準やHDR相当の�
 ### ポストプロセス
 
 - `RenderPipeline`とTSLベースのポストプロセスを第一候補とする。
-- Bloomにはthree.js公式AddonのTSL `BloomNode`を使用する。初期値はUnity版を基準に、strength `0.25`、radius `0.5`、threshold `1.0`とする。
+- Bloomにはthree.js公式AddonのTSL `BloomNode`を使用する。Unity版との視覚差を踏まえ、SDR表示の調整値はstrength `0.1`、radius `0.1`、threshold `1.0`とする。Unity URPのintensityおよびscatterと`BloomNode`のstrengthおよびradiusは同じ数値でも効果量が一致しないため、直接対応する値とは扱わない。
 - Bloomはトーンマッピングより前のHDR値に適用する。
-- SDR出力ではthree.jsの`ACESFilmicToneMapping`をexposure `0.25`で使用し、Bloom合成後のHDR値を表示可能な範囲へ圧縮する。この値はUnity版のpaper white `234 nits`と輝度上限`1000 nits`を初期調整の参考にしたもので、nitsからの厳密な換算値ではない。
+- SDR出力ではthree.jsの`ACESFilmicToneMapping`をexposure `1.0`で使用し、Bloom合成後のHDR値を表示可能な範囲へ圧縮する。Unity版のpost exposureが`0 EV`であるため、全体露出はこの基準値を維持し、紙吹雪の発光感はBloom側で調整する。Unity版のpaper white `234 nits`と輝度上限`1000 nits`はHDR出力時の表示基準であり、SDR exposureへの換算には使用しない。
 - 色空間変換と出力変換は処理経路の最後に一度だけ適用する。
 - 初期のBloomパラメーターはUnity版を基準にするが、アルゴリズム差があるため数値一致ではなく視覚比較で調整する。
 - HDR表示とSDR表示で出力変換を分ける。
@@ -295,7 +295,7 @@ HDRを利用できない環境では、特別な高品質基準やHDR相当の�
 - WebGPUとWebGL 2で共通利用できる実装を優先する。
 - パーティクル状態はCPUで更新し、`InstancedMesh`でまとめて描画する。
 - パーティクル数はUnity版の容量`1000`を初期上限とし、CPU更新方式で十分な性能が得られるか検証する。
-- 再現性のある固定シードを使い、50個/秒、寿命20秒、10秒の事前更新をCPU上で再現する。位置と速度は画面座標へ正規化し、縦横比が変わっても画面全体へ分布させる。
+- 再現性のある固定シードを使い、15個/秒、寿命20秒、10秒の事前更新をCPU上で再現する。Unity版の生成数は50個/秒だが、three.js版では画面上の密度を調整した値を採用する。位置と速度は画面座標へ正規化し、縦横比が変わっても画面全体へ分布させる。
 - 元画像と紙吹雪をHalf Floatの中間ターゲットへ合成してから万華鏡処理へ渡し、紙吹雪の`1.0`を超える値をBloom前まで保持する。
 - VFX Graph固有の3D姿勢は完全再現せず、平面矩形の回転と縦方向の縮みで紙片の回転を近似する。
 

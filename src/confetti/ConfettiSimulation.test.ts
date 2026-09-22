@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   CONFETTI_CAPACITY,
+  CONFETTI_PREWARM_SECONDS,
+  CONFETTI_SPAWN_RATE,
   ConfettiSimulation,
   type ConfettiParticleState,
 } from "./ConfettiSimulation";
@@ -44,16 +46,21 @@ describe("ConfettiSimulation", () => {
       if (state.active) activeCount += 1;
     }
 
-    expect(activeCount).toBe(501);
+    expect(activeCount).toBe(
+      Math.floor(CONFETTI_PREWARM_SECONDS * CONFETTI_SPAWN_RATE) + 1,
+    );
   });
 
-  it("reaches full capacity after another ten seconds", () => {
+  it("reaches full capacity after every particle has spawned", () => {
     const simulation = new ConfettiSimulation(123);
     const state = createState();
     let activeCount = 0;
+    const elapsedSeconds =
+      (CONFETTI_CAPACITY - 1) / CONFETTI_SPAWN_RATE -
+      CONFETTI_PREWARM_SECONDS;
 
     for (let index = 0; index < simulation.capacity; index += 1) {
-      simulation.sample(index, 10, state);
+      simulation.sample(index, elapsedSeconds, state);
       if (state.active) activeCount += 1;
     }
 
