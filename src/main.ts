@@ -36,29 +36,37 @@ async function start(): Promise<void> {
   startStatus.textContent = "描画を初期化しています…";
 
   try {
-    const [{ createRenderer, resizeRenderer }, { createTestScene }] =
+    const [{ RendererController }, { TestScene }] =
       await Promise.all([
-        import("./render/app/createRenderer"),
-        import("./render/app/createTestScene"),
+        import("./render/app/RendererController"),
+        import("./render/app/TestScene"),
       ]);
-    const { renderer, backend } = await createRenderer(canvas);
-    const testScene = createTestScene();
+    const renderer = new RendererController(canvas);
+    await renderer.initialize();
+    const testScene = new TestScene();
 
     const resize = () => {
-      const viewport = resizeRenderer(renderer);
+      const viewport = renderer.resize();
       testScene.resize(viewport.width / viewport.height);
     };
 
     resize();
     window.addEventListener("resize", resize);
 
-    await renderer.setAnimationLoop((time) => {
-      testScene.update(time / 1000);
-      renderer.render(testScene.scene, testScene.camera);
-    });
+    try {
+      await renderer.setAnimationLoop((time) => {
+        testScene.update(time / 1000);
+        renderer.render(testScene.scene, testScene.camera);
+      });
+    } catch (error) {
+      window.removeEventListener("resize", resize);
+      testScene.dispose();
+      await renderer.dispose();
+      throw error;
+    }
 
     backendStatus.textContent =
-      backend === "webgpu" ? "描画: WebGPU" : "描画: WebGL 2";
+      renderer.backend === "webgpu" ? "描画: WebGPU" : "描画: WebGL 2";
     runtimeStatus.hidden = false;
     startScreen.hidden = true;
     app.dataset.state = "running";
