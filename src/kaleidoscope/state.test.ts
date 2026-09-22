@@ -116,4 +116,47 @@ describe("KaleidoscopeStateController", () => {
 
     expect(frame.layers[0].center).toEqual(detectedFace.center);
   });
+
+  it("moves halfway to a new face center after one smoothing half-life", () => {
+    const controller = new KaleidoscopeStateController();
+    const movedFace = {
+      ...detectedFace,
+      center: { x: 0.8, y: 0.2 },
+    };
+
+    controller.update(0, detectedFace);
+    controller.update(1, detectedFace);
+    controller.update(1, movedFace);
+    const frame = controller.update(1.1, movedFace);
+
+    expect(frame.layers[0].center.x).toBeCloseTo(0.6);
+    expect(frame.layers[0].center.y).toBeCloseTo(0.4);
+  });
+
+  it("smooths face motion independently of the render frame rate", () => {
+    const oneStep = new KaleidoscopeStateController();
+    const twoSteps = new KaleidoscopeStateController();
+    const movedFace = {
+      ...detectedFace,
+      center: { x: 0.8, y: 0.2 },
+    };
+
+    oneStep.update(0, detectedFace);
+    oneStep.update(1, detectedFace);
+    oneStep.update(1, movedFace);
+    const oneStepFrame = oneStep.update(1.1, movedFace);
+
+    twoSteps.update(0, detectedFace);
+    twoSteps.update(1, detectedFace);
+    twoSteps.update(1, movedFace);
+    twoSteps.update(1.05, movedFace);
+    const twoStepFrame = twoSteps.update(1.1, movedFace);
+
+    expect(twoStepFrame.layers[0].center.x).toBeCloseTo(
+      oneStepFrame.layers[0].center.x,
+    );
+    expect(twoStepFrame.layers[0].center.y).toBeCloseTo(
+      oneStepFrame.layers[0].center.y,
+    );
+  });
 });
