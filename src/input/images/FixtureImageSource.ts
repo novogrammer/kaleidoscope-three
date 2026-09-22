@@ -32,6 +32,14 @@ export class FixtureImageSource implements ImageSource {
     return this.#texture;
   }
 
+  get width(): number {
+    return this.image.naturalWidth;
+  }
+
+  get height(): number {
+    return this.image.naturalHeight;
+  }
+
   async initialize(): Promise<void> {
     if (this.#texture !== null) return;
 

@@ -65,7 +65,11 @@ async function start(): Promise<void> {
 
     try {
       await Promise.all([renderer.initialize(), imageSource.initialize()]);
-      testScene = new TestScene(imageSource.texture);
+      testScene = new TestScene(
+        imageSource.texture,
+        imageSource.width,
+        imageSource.height,
+      );
 
       resize = () => {
         const viewport = renderer.resize();

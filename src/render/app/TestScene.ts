@@ -16,8 +16,12 @@ export class TestScene {
   readonly #geometry = new PlaneGeometry(2, 2);
   readonly #quad: Mesh;
 
-  constructor(sourceTexture: Texture) {
-    this.#material = new KaleidoscopeMaterial(sourceTexture);
+  constructor(sourceTexture: Texture, sourceWidth: number, sourceHeight: number) {
+    this.#material = new KaleidoscopeMaterial(
+      sourceTexture,
+      sourceWidth,
+      sourceHeight,
+    );
     this.#quad = new Mesh(this.#geometry, this.#material);
     this.camera.position.z = 2;
     this.scene.add(this.#quad);

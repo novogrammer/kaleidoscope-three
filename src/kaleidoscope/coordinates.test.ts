@@ -4,6 +4,7 @@ import {
   aspectCoordinateToUv,
   calculateCircleMask,
   calculateKaleidoscopeCoordinate,
+  coverUv,
   foldKaleidoscopeCoordinate,
   glslModulo,
   mirrorCoordinate,
@@ -22,6 +23,28 @@ describe("kaleidoscope coordinate CPU reference", () => {
 
     expectVector(aspectCoordinate, { x: -1 / 6, y: 0.75 });
     expectVector(aspectCoordinateToUv(aspectCoordinate, 1920, 1080), uv);
+  });
+
+  it("round-trips aspect coordinates in a portrait viewport", () => {
+    const uv = { x: 0.125, y: 0.75 };
+    const aspectCoordinate = uvToAspectCoordinate(uv, 1080, 1920);
+
+    expectVector(aspectCoordinate, { x: 0.2890625, y: 0.75 });
+    expectVector(aspectCoordinateToUv(aspectCoordinate, 1080, 1920), uv);
+  });
+
+  it("cover-crops a square source vertically in a landscape viewport", () => {
+    expectVector(coverUv({ x: 0.25, y: 0.25 }, 1920, 1080, 1024, 1024), {
+      x: 0.25,
+      y: 0.359375,
+    });
+  });
+
+  it("cover-crops a square source horizontally in a portrait viewport", () => {
+    expectVector(coverUv({ x: 0.25, y: 0.25 }, 1080, 1920, 1024, 1024), {
+      x: 0.359375,
+      y: 0.25,
+    });
   });
 
   it("mirrors the left half across the horizontal center", () => {

@@ -4,12 +4,14 @@ import {
   aspectCoordinateToUvTsl,
   calculateCircleMaskTsl,
   calculateKaleidoscopeCoordinateTsl,
+  coverUvTsl,
   uvToAspectCoordinateTsl,
 } from "../../kaleidoscope/coordinates.tsl";
 import type { KaleidoscopeFrameState } from "../../kaleidoscope/state";
 
 export class KaleidoscopeMaterial extends MeshBasicNodeMaterial {
   readonly #resolution = uniform(new Vector2(1, 1));
+  readonly #sourceSize = uniform(new Vector2(1, 1));
   readonly #rotation = uniform(0);
   readonly #centers = [
     uniform(new Vector2(0.5, 0.5)),
@@ -20,9 +22,10 @@ export class KaleidoscopeMaterial extends MeshBasicNodeMaterial {
   readonly #minimumRadii = [uniform(0), uniform(0), uniform(0)] as const;
   readonly #maximumRadii = [uniform(1), uniform(0), uniform(0.75)] as const;
 
-  constructor(sourceTexture: Texture) {
+  constructor(sourceTexture: Texture, sourceWidth: number, sourceHeight: number) {
     super();
 
+    this.#sourceSize.value.set(sourceWidth, sourceHeight);
     const aspectCoordinate = uvToAspectCoordinateTsl(
       uv(),
       this.#resolution.x,
@@ -35,10 +38,17 @@ export class KaleidoscopeMaterial extends MeshBasicNodeMaterial {
         this.#unitLengths[index],
         this.#rotation,
       );
-      const sampleUv = aspectCoordinateToUvTsl(
+      const viewportUv = aspectCoordinateToUvTsl(
         kaleidoscopeCoordinate,
         this.#resolution.x,
         this.#resolution.y,
+      );
+      const sampleUv = coverUvTsl(
+        viewportUv,
+        this.#resolution.x,
+        this.#resolution.y,
+        this.#sourceSize.x,
+        this.#sourceSize.y,
       );
       const sampledColor = texture(sourceTexture, sampleUv);
       const mask = calculateCircleMaskTsl(

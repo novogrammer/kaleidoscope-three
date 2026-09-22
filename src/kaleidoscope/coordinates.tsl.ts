@@ -37,6 +37,33 @@ export function aspectCoordinateToUvTsl(
   return vec2(coordinate.x.sub(0.5).div(aspect).add(0.5), coordinate.y);
 }
 
+export function coverUvTsl(
+  coordinate: Vec2Node,
+  viewportWidth: FloatNode,
+  viewportHeight: FloatNode,
+  sourceWidth: FloatNode,
+  sourceHeight: FloatNode,
+): Vec2Node {
+  const viewportAspect = viewportWidth.div(viewportHeight);
+  const sourceAspect = sourceWidth.div(sourceHeight);
+  const viewportIsWider = viewportAspect.greaterThan(sourceAspect);
+  const scaleX = select(
+    viewportIsWider,
+    1,
+    viewportAspect.div(sourceAspect),
+  );
+  const scaleY = select(
+    viewportIsWider,
+    sourceAspect.div(viewportAspect),
+    1,
+  );
+
+  return vec2(
+    coordinate.x.sub(0.5).mul(scaleX).add(0.5),
+    coordinate.y.sub(0.5).mul(scaleY).add(0.5),
+  );
+}
+
 export function mirrorCoordinateTsl(coordinate: Vec2Node): Vec2Node {
   return coordinate.sub(0.5).abs().add(0.5);
 }

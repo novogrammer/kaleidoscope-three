@@ -34,6 +34,14 @@ export class TestPatternImageSource implements ImageSource {
     return this.#texture;
   }
 
+  get width(): number {
+    return textureSize;
+  }
+
+  get height(): number {
+    return textureSize;
+  }
+
   async initialize(): Promise<void> {
     this.#texture.colorSpace = SRGBColorSpace;
     this.#texture.magFilter = NearestFilter;

@@ -40,6 +40,30 @@ export function aspectCoordinateToUv(
   };
 }
 
+/** Maps viewport UVs to source UVs with CSS object-fit: cover semantics. */
+export function coverUv(
+  input: Vector2,
+  viewportWidth: number,
+  viewportHeight: number,
+  sourceWidth: number,
+  sourceHeight: number,
+): Vector2 {
+  const viewportAspect = viewportWidth / viewportHeight;
+  const sourceAspect = sourceWidth / sourceHeight;
+
+  if (viewportAspect > sourceAspect) {
+    return {
+      x: input.x,
+      y: (input.y - 0.5) * (sourceAspect / viewportAspect) + 0.5,
+    };
+  }
+
+  return {
+    x: (input.x - 0.5) * (viewportAspect / sourceAspect) + 0.5,
+    y: input.y,
+  };
+}
+
 /** CPU reference for Mirror_float in CustomFunctions.hlsl. */
 export function mirrorCoordinate(input: Vector2): Vector2 {
   return {
