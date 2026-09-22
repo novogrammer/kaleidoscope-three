@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MediaPipe Face Detector Check</title>
+  </head>
+  <body>
+    <main class="check-page">
+      <header class="check-header">
+        <p class="eyebrow">MediaPipe verification</p>
+        <h1>Face Detector</h1>
+        <p class="description">
+          前面カメラの映像へ、BlazeFace short-rangeが検出した顔矩形と中心点を重ねます。
+        </p>
+      </header>
+
+      <section class="preview" aria-label="カメラプレビュー">
+        <canvas id="output" width="1280" height="720"></canvas>
+        <div id="empty-state" class="empty-state">「開始」を押してカメラを許可してください</div>
+      </section>
+
+      <div class="controls">
+        <button id="start" type="button">開始</button>
+        <button id="stop" type="button" disabled>停止</button>
+      </div>
+
+      <output id="status" class="status" aria-live="polite">待機中</output>
+      <p class="note">
+        モデルとWASMは確認用にCDNから読み込みます。カメラ映像は外部へ送信しません。
+      </p>
+    </main>
+
+    <video id="source" class="source-video" muted playsinline></video>
+    <script type="module" src="/src/mediapipe-check.ts"></script>
+  </body>
+</html>
