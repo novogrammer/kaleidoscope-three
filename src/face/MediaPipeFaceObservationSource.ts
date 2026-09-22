@@ -8,6 +8,7 @@ import wasmSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_internal.js?
 import wasmNoSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url";
 import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
 import modelAssetPath from "../mediapipe-check/assets/blaze_face_short_range.tflite?url";
+import { TimingWindow } from "../diagnostics/TimingWindow";
 import type { FaceObservation } from "./FaceObservation";
 import type { FaceObservationSource } from "./FaceObservationSource";
 import {
@@ -16,6 +17,7 @@ import {
 } from "./coordinates";
 
 export const FACE_DETECTION_INTERVAL_MS = 1000 / 15;
+const INFERENCE_TIMING_SAMPLE_COUNT = 60;
 
 const noFace = {
   center: { x: 0.5, y: 0.5 },
@@ -32,6 +34,9 @@ export class MediaPipeFaceObservationSource
   #video: HTMLVideoElement | null = null;
   #lastDetectionTimeMs = -Infinity;
   #lastVideoTime = -1;
+  readonly #inferenceTimings = import.meta.env.DEV
+    ? new TimingWindow(INFERENCE_TIMING_SAMPLE_COUNT)
+    : null;
 
   async initializeImage(image: HTMLImageElement): Promise<void> {
     if (this.#detector !== null) return;
@@ -88,14 +93,52 @@ export class MediaPipeFaceObservationSource
       return;
     }
 
+    const detections = this.#detectForVideo(timestampMs);
+
     this.#observation = createObservation(
-      this.#detector.detectForVideo(this.#video, timestampMs).detections,
+      detections,
       this.#video.videoWidth,
       this.#video.videoHeight,
       true,
     );
     this.#lastDetectionTimeMs = timestampMs;
     this.#lastVideoTime = this.#video.currentTime;
+  }
+
+  #detectForVideo(timestampMs: number): Detection[] {
+    if (this.#detector === null || this.#video === null) return [];
+
+    if (this.#inferenceTimings === null) {
+      return this.#detector.detectForVideo(this.#video, timestampMs)
+        .detections;
+    }
+
+    const inferenceStart = performance.now();
+    const detections = this.#detector.detectForVideo(
+      this.#video,
+      timestampMs,
+    ).detections;
+    this.#recordInferenceTime(performance.now() - inferenceStart);
+    return detections;
+  }
+
+  #recordInferenceTime(milliseconds: number): void {
+    if (this.#inferenceTimings === null) return;
+
+    const summary = this.#inferenceTimings.record(milliseconds);
+    if (
+      summary.totalSampleCount % INFERENCE_TIMING_SAMPLE_COUNT !== 0
+    ) {
+      return;
+    }
+
+    console.info(
+      `[MediaPipe] inference last ${summary.sampleCount}: ` +
+        `latest=${summary.latestMilliseconds.toFixed(1)} ms, ` +
+        `average=${summary.averageMilliseconds.toFixed(1)} ms, ` +
+        `max=${summary.maximumMilliseconds.toFixed(1)} ms, ` +
+        `15 fps budget=${FACE_DETECTION_INTERVAL_MS.toFixed(1)} ms`,
+    );
   }
 }
 
