@@ -32,9 +32,11 @@ export class MediaPipeFaceObservationSource
 {
   #detector: FaceDetector | null = null;
   #observation: FaceObservation = noFace;
+  #source: CanvasImageSource | null = null;
   #video: HTMLVideoElement | null = null;
   #detectionCanvas: HTMLCanvasElement | null = null;
   #detectionContext: CanvasRenderingContext2D | null = null;
+  #mirrorHorizontally = false;
   #lastDetectionTimeMs = -Infinity;
   #lastVideoTime = -1;
   readonly #detectionTimings = import.meta.env.DEV
@@ -42,32 +44,39 @@ export class MediaPipeFaceObservationSource
     : null;
 
   async initializeImage(image: HTMLImageElement): Promise<void> {
-    if (this.#detector !== null) return;
-
-    const detector = await createDetector("IMAGE");
-
-    try {
-      this.#observation = createObservation(
-        detector.detect(image).detections,
-        image.naturalWidth,
-        image.naturalHeight,
-        false,
-      );
-      this.#detector = detector;
-    } catch (error) {
-      detector.close();
-      throw error;
-    }
+    await this.#initializeSource(
+      image,
+      image.naturalWidth,
+      image.naturalHeight,
+      "IMAGE",
+      false,
+    );
   }
 
   async initializeVideo(video: HTMLVideoElement): Promise<void> {
-    if (this.#detector !== null) return;
-
-    const detector = await createDetector("VIDEO");
-    const detectionCanvas = document.createElement("canvas");
-    const detectionSize = calculateDetectionFrameSize(
+    await this.#initializeSource(
+      video,
       video.videoWidth,
       video.videoHeight,
+      "VIDEO",
+      true,
+    );
+  }
+
+  async #initializeSource(
+    source: CanvasImageSource,
+    sourceWidth: number,
+    sourceHeight: number,
+    runningMode: "IMAGE" | "VIDEO",
+    mirrorHorizontally: boolean,
+  ): Promise<void> {
+    if (this.#detector !== null) return;
+
+    const detector = await createDetector(runningMode);
+    const detectionCanvas = document.createElement("canvas");
+    const detectionSize = calculateDetectionFrameSize(
+      sourceWidth,
+      sourceHeight,
     );
     detectionCanvas.width = detectionSize.width;
     detectionCanvas.height = detectionSize.height;
@@ -81,13 +90,15 @@ export class MediaPipeFaceObservationSource
     }
 
     this.#detector = detector;
-    this.#video = video;
+    this.#source = source;
+    this.#video = source instanceof HTMLVideoElement ? source : null;
     this.#detectionCanvas = detectionCanvas;
     this.#detectionContext = detectionContext;
+    this.#mirrorHorizontally = mirrorHorizontally;
   }
 
   sample(elapsedSeconds: number): FaceObservation {
-    this.#detectVideoFrame(elapsedSeconds * 1000);
+    this.#detectFrame(elapsedSeconds * 1000);
 
     return {
       ...this.#observation,
@@ -99,40 +110,44 @@ export class MediaPipeFaceObservationSource
   dispose(): void {
     this.#detector?.close();
     this.#detector = null;
+    this.#source = null;
     this.#video = null;
     this.#detectionCanvas = null;
     this.#detectionContext = null;
+    this.#mirrorHorizontally = false;
     this.#observation = noFace;
     this.#lastDetectionTimeMs = -Infinity;
     this.#lastVideoTime = -1;
   }
 
-  #detectVideoFrame(timestampMs: number): void {
+  #detectFrame(timestampMs: number): void {
     if (
       this.#detector === null ||
-      this.#video === null ||
+      this.#source === null ||
       timestampMs - this.#lastDetectionTimeMs < FACE_DETECTION_INTERVAL_MS ||
-      this.#video.currentTime === this.#lastVideoTime
+      (this.#video !== null && this.#video.currentTime === this.#lastVideoTime)
     ) {
       return;
     }
 
-    const detections = this.#detectForVideo(timestampMs);
+    const detections = this.#detectSourceFrame(timestampMs);
 
     this.#observation = createObservation(
       detections,
-      this.#detectionCanvas?.width ?? this.#video.videoWidth,
-      this.#detectionCanvas?.height ?? this.#video.videoHeight,
-      true,
+      this.#detectionCanvas?.width ?? 1,
+      this.#detectionCanvas?.height ?? 1,
+      this.#mirrorHorizontally,
     );
     this.#lastDetectionTimeMs = timestampMs;
-    this.#lastVideoTime = this.#video.currentTime;
+    if (this.#video !== null) {
+      this.#lastVideoTime = this.#video.currentTime;
+    }
   }
 
-  #detectForVideo(timestampMs: number): Detection[] {
+  #detectSourceFrame(timestampMs: number): Detection[] {
     if (
       this.#detector === null ||
-      this.#video === null ||
+      this.#source === null ||
       this.#detectionCanvas === null ||
       this.#detectionContext === null
     ) {
@@ -152,7 +167,7 @@ export class MediaPipeFaceObservationSource
   #runDetectionPipeline(timestampMs: number): Detection[] {
     if (
       this.#detector === null ||
-      this.#video === null ||
+      this.#source === null ||
       this.#detectionCanvas === null ||
       this.#detectionContext === null
     ) {
@@ -160,17 +175,17 @@ export class MediaPipeFaceObservationSource
     }
 
     this.#detectionContext.drawImage(
-      this.#video,
+      this.#source,
       0,
       0,
       this.#detectionCanvas.width,
       this.#detectionCanvas.height,
     );
 
-    return this.#detector.detectForVideo(
-      this.#detectionCanvas,
-      timestampMs,
-    ).detections;
+    return this.#video === null
+      ? this.#detector.detect(this.#detectionCanvas).detections
+      : this.#detector.detectForVideo(this.#detectionCanvas, timestampMs)
+          .detections;
   }
 
   #recordDetectionTime(milliseconds: number): void {
