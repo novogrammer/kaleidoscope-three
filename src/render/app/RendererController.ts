@@ -89,7 +89,7 @@ export class RendererController {
       if (!attemptHdr) throw error;
 
       console.warn(
-        "HDR canvas initialization failed. Falling back to SDR output.",
+        "Renderer initialization with HDR settings failed. Falling back to SDR output.",
         error,
       );
       hdrInitialized = false;
