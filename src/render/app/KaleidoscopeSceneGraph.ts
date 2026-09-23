@@ -63,8 +63,8 @@ export class KaleidoscopeSceneGraph {
     this.#sourceMaterial.setResolution(width, height);
     this.#material.setResolution(width, height);
     this.sourceTarget.setSize(
-      Math.ceil(width * pixelRatio),
-      Math.ceil(height * pixelRatio),
+      Math.floor(width * pixelRatio),
+      Math.floor(height * pixelRatio),
     );
   }
 
