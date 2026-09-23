@@ -1,7 +1,6 @@
 # 顔万華鏡 three.js版
-グループ展向けにopenFrameworks版やUnity版の顔万華鏡を作ってきた。<br>
-three.js版にすることで静的ページとしてずっと展示できるようになる。<br>
-Codexを利用して移植を行うが、任せきりにしない。<br>
+
+グループ展向けに制作してきたopenFrameworks版、Unity版の顔万華鏡を、静的ページとして継続公開できるthree.js版へ移植する。
 
 ## Live demo
 
@@ -12,6 +11,57 @@ https://novogrammer.github.io/kaleidoscope-three/
 Unity版のソースリポジトリ
 
 https://github.com/novogrammer/KaleidoscopeUnityHdr
+
+## ローカル実行
+
+```bash
+npm install
+npm run dev
+```
+
+型チェックを含むプロダクションビルドと単体テストは、次のコマンドで実行する。
+
+```bash
+npm run build
+npm test
+```
+
+## 開発・検証用URLパラメーター
+
+画像入力と顔情報をURLクエリパラメーターで切り替えられる。パラメーターを省略した通常起動では、開始操作後に前面カメラとMediaPipeを使用する。
+
+| パラメーター | 値 | 省略時 | 用途 |
+| --- | --- | --- | --- |
+| `input` | `camera`, `fixture` | `camera` | 前面カメラまたは静止画fixtureを選ぶ |
+| `fixture` | `face-center`, `face-offset`, `no-face` | `face-center` | 使用する静止画を選ぶ |
+| `mock` | `center`, `enter-exit`, `move` | 指定なし | 指定時はMediaPipeを省略し、モック顔情報を使用する |
+| `faceScale` | `dynamic`, `fixed` | `dynamic` | 主レイヤーの三角形サイズを顔サイズへ連動、またはUnity版相当の固定値にする |
+| `output` | `auto`, `sdr`, `hdr` | `auto` | HDR自動選択、SDR固定、HDR初期化の診断を切り替える |
+| `backend` | `auto`, `webgl2` | `auto` | WebGPU優先の自動選択、またはWebGL 2固定にする |
+
+代表的な確認用URLは次のとおり。
+
+```text
+?input=fixture&fixture=face-center
+  中央の顔写真を背景とMediaPipe入力に使用する
+
+?input=fixture&fixture=face-offset&output=sdr&backend=webgl2
+  左寄りの顔への追従をWebGL 2＋SDRで確認する
+
+?input=fixture&fixture=no-face&output=sdr&backend=webgl2
+  顔未検出時も補助表示が継続することを確認する
+
+?input=fixture&fixture=face-center&mock=enter-exit
+  MediaPipeを省略し、顔の検出・喪失と1秒フェードを再現する
+
+?input=fixture&fixture=no-face&mock=center
+  顔のない画像と固定の顔情報を組み合わせ、画像入力と顔情報の分離を確認する
+
+?input=camera&faceScale=fixed
+  前面カメラを使い、Unity版相当の固定サイズで比較する
+```
+
+`backend=webgl2`と`output=hdr`を同時に指定した場合はWebGL 2が優先され、SDR出力になる。
 
 ## MediaPipeアセット
 
@@ -72,9 +122,9 @@ https://github.com/novogrammer/KaleidoscopeUnityHdr
 - 配置先: `public/ogp.jpg`
 - 形式: JPEG、1200 × 630、SDR
 - 撮影条件: `?input=fixture&mock=center&output=sdr&backend=webgl2`
+- 撮影タイミング: 描画開始から約7秒後
 - 使用素材: `face-center.jpg`とアプリの実描画
-- 候補画像: `source-assets/ogp/ogp-candidate-01.jpg`、`source-assets/ogp/ogp-candidate-02-later.jpg`
-- 採用画像: `ogp-candidate-02-later.jpg`
+- 生成元: `source-assets/ogp/ogp-candidate-02-later.jpg`
+- 加工: ステータス表示だけを除去
 
-実画面を固定fixtureで撮影し、ステータス表示だけを除いている。HDRディスプレイやWebカメラ入力に依存せず、同じ見え方を確認できる条件にしている。
-第1候補は開始約3.5秒後、第2候補は開始約7秒後に撮影した。候補画像はViteの配信対象外に置き、採用画像だけを`public/ogp.jpg`へ配置する。
+HDRディスプレイやWebカメラ入力に依存せず、同じ見え方を確認できる条件にしている。
