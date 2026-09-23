@@ -8,6 +8,7 @@ import wasmSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_internal.js?
 import wasmNoSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url";
 import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
 import modelAssetPath from "../assets/models/blaze_face_short_range.tflite?url";
+import { waitForVideoDimensions } from "../input/images/videoDimensions";
 
 import "./style.css";
 
@@ -174,16 +175,6 @@ function stop(): void {
   if (status.dataset.error !== "true") {
     setStatus("停止しました");
   }
-}
-
-function waitForVideoDimensions(source: HTMLVideoElement): Promise<void> {
-  if (source.videoWidth > 0 && source.videoHeight > 0) {
-    return Promise.resolve();
-  }
-
-  return new Promise((resolve) => {
-    source.addEventListener("loadedmetadata", () => resolve(), { once: true });
-  });
 }
 
 async function createVisionFileset() {

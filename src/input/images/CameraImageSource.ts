@@ -1,5 +1,6 @@
 import { SRGBColorSpace, VideoTexture, type Texture } from "three/webgpu";
 import type { ImageSource } from "./ImageSource";
+import { waitForVideoDimensions } from "./videoDimensions";
 
 export class CameraImageSource implements ImageSource {
   readonly #video = document.createElement("video");
@@ -68,14 +69,4 @@ export class CameraImageSource implements ImageSource {
     this.#stream?.getTracks().forEach((track) => track.stop());
     this.#stream = null;
   }
-}
-
-function waitForVideoDimensions(video: HTMLVideoElement): Promise<void> {
-  if (video.videoWidth > 0 && video.videoHeight > 0) {
-    return Promise.resolve();
-  }
-
-  return new Promise((resolve) => {
-    video.addEventListener("loadedmetadata", () => resolve(), { once: true });
-  });
 }
