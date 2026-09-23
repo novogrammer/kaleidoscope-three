@@ -1,6 +1,7 @@
 import "./style.css";
 
 import { parseAppConfig } from "./app/config";
+import type { FaceObservation } from "./face/FaceObservation";
 import type { FaceObservationSource } from "./face/FaceObservationSource";
 import { MockFaceObservationSource } from "./face/MockFaceObservationSource";
 import { NoFaceObservationSource } from "./face/NoFaceObservationSource";
@@ -145,8 +146,21 @@ async function start(): Promise<void> {
         if (sceneGraph !== null) {
           animationStartTime ??= time;
           const elapsedSeconds = (time - animationStartTime) / 1000;
-          const sourceObservation =
-            faceObservationSource.sample(elapsedSeconds);
+          let sourceObservation: FaceObservation;
+          try {
+            sourceObservation = faceObservationSource.sample(elapsedSeconds);
+          } catch (faceObservationError) {
+            console.warn(
+              "Face detection failed while running. Continuing without it.",
+              faceObservationError,
+            );
+            faceObservationSource.dispose?.();
+            faceObservationSource = new NoFaceObservationSource();
+            inputStatus.textContent =
+              "入力設定: 顔検出実行エラー / 補助表示";
+            sourceObservation =
+              faceObservationSource.sample(elapsedSeconds);
+          }
           const faceObservation = mapSourceObservationToAspectCoordinates(
             sourceObservation,
             viewportWidth,
