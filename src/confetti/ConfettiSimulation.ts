@@ -1,6 +1,6 @@
 export const CONFETTI_CAPACITY = 1000;
 export const CONFETTI_SPAWN_RATE = 15;
-export const CONFETTI_LIFETIME_SECONDS = 20;
+export const CONFETTI_LIFETIME_SECONDS = 30;
 export const CONFETTI_PREWARM_SECONDS = 10;
 
 export type ConfettiParticleState = {
