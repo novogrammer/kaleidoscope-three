@@ -118,10 +118,6 @@ export class RendererController {
     return { width, height, pixelRatio };
   }
 
-  render(scene: Scene, camera: Camera): void {
-    this.#requireRenderer().render(scene, camera);
-  }
-
   configureBloom(scene: Scene, camera: Camera): void {
     this.#bloomPipeline?.dispose();
     this.#bloomPipeline = new BloomRenderPipeline(
