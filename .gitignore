@@ -1,5 +1,6 @@
 references/*
 !references/.gitkeep
+memo/
 # Logs
 logs
 *.log
