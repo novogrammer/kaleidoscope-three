@@ -178,8 +178,6 @@ export class RendererController {
     if (hdr) {
       renderer.outputColorSpace = ExtendedSRGBColorSpace;
       renderer.toneMapping = NoToneMapping;
-    } else {
-      this.#configureSdrOutput(renderer);
     }
 
     return renderer;
