@@ -1,10 +1,14 @@
 import { SRGBColorSpace, Texture } from "three/webgpu";
 import type { FixtureName } from "../../app/config";
 import faceCenterUrl from "../../assets/fixtures/face-center.jpg?url";
+import faceOffsetUrl from "../../assets/fixtures/face-offset.jpg?url";
+import noFaceUrl from "../../assets/fixtures/no-face.jpg?url";
 import type { ImageSource } from "./ImageSource";
 
-const fixtureUrls: Partial<Record<FixtureName, string>> = {
+const fixtureUrls: Record<FixtureName, string> = {
   "face-center": faceCenterUrl,
+  "face-offset": faceOffsetUrl,
+  "no-face": noFaceUrl,
 };
 
 export class FixtureImageSource implements ImageSource {
@@ -43,14 +47,9 @@ export class FixtureImageSource implements ImageSource {
   async initialize(): Promise<void> {
     if (this.#texture !== null) return;
 
-    const url = fixtureUrls[this.#fixtureName];
-    if (url === undefined) {
-      throw new Error(`Fixture is not available: ${this.#fixtureName}`);
-    }
-
     const image = new Image();
     image.decoding = "async";
-    image.src = url;
+    image.src = fixtureUrls[this.#fixtureName];
     await image.decode();
 
     const texture = new Texture(image);
