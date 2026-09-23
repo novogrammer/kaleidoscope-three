@@ -12,7 +12,7 @@ import { KaleidoscopeMaterial } from "../materials/KaleidoscopeMaterial";
 import { SourceImageMaterial } from "../materials/SourceImageMaterial";
 import { ConfettiInstancedMesh } from "../objects/ConfettiInstancedMesh";
 
-export class TestScene {
+export class KaleidoscopeSceneGraph {
   readonly scene = new Scene();
   readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
   readonly sourceScene = new Scene();

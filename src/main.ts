@@ -5,8 +5,13 @@ import type { FaceObservationSource } from "./face/FaceObservationSource";
 import { MockFaceObservationSource } from "./face/MockFaceObservationSource";
 import { NoFaceObservationSource } from "./face/NoFaceObservationSource";
 import { mapSourceObservationToAspectCoordinates } from "./face/coordinates";
+import { CameraImageSource } from "./input/images/CameraImageSource";
+import { FixtureImageSource } from "./input/images/FixtureImageSource";
 import type { ImageSource } from "./input/images/ImageSource";
+import { TestPatternImageSource } from "./input/images/TestPatternImageSource";
 import { KaleidoscopeStateController } from "./kaleidoscope/state";
+import { KaleidoscopeSceneGraph } from "./render/app/KaleidoscopeSceneGraph";
+import { RendererController } from "./render/app/RendererController";
 
 const app = getElement<HTMLElement>("app");
 const canvas = getElement<HTMLCanvasElement>("stage");
@@ -43,23 +48,10 @@ async function start(): Promise<void> {
   startStatus.textContent = "描画を初期化しています…";
 
   try {
-    const [
-      { RendererController },
-      { TestScene },
-      { CameraImageSource },
-      { FixtureImageSource },
-      { TestPatternImageSource },
-      mediaPipeModule,
-    ] = await Promise.all([
-      import("./render/app/RendererController"),
-      import("./render/app/TestScene"),
-      import("./input/images/CameraImageSource"),
-      import("./input/images/FixtureImageSource"),
-      import("./input/images/TestPatternImageSource"),
+    const mediaPipeModule =
       config.mock === null
-        ? import("./face/MediaPipeFaceObservationSource")
-        : Promise.resolve(null),
-    ]);
+        ? await import("./face/MediaPipeFaceObservationSource")
+        : null;
     const renderer = new RendererController(
       canvas,
       config.output,
@@ -77,7 +69,7 @@ async function start(): Promise<void> {
     let faceObservationSource: FaceObservationSource & {
       dispose?: () => void;
     } = new NoFaceObservationSource();
-    let testScene: InstanceType<typeof TestScene> | null = null;
+    let sceneGraph: KaleidoscopeSceneGraph | null = null;
     let resize: (() => void) | null = null;
     let animationStartTime: number | null = null;
     let viewportWidth = 1;
@@ -129,19 +121,19 @@ async function start(): Promise<void> {
           inputStatus.textContent = "入力設定: 顔検出利用不可 / 補助表示";
         }
       }
-      testScene = new TestScene(
+      sceneGraph = new KaleidoscopeSceneGraph(
         imageSource.texture,
         imageSource.width,
         imageSource.height,
         cameraAvailable,
       );
-      renderer.configureBloom(testScene.scene, testScene.camera);
+      renderer.configureBloom(sceneGraph.scene, sceneGraph.camera);
 
       resize = () => {
         const viewport = renderer.resize();
         viewportWidth = viewport.width;
         viewportHeight = viewport.height;
-        testScene?.resize(
+        sceneGraph?.resize(
           viewport.width,
           viewport.height,
           viewport.pixelRatio,
@@ -151,7 +143,7 @@ async function start(): Promise<void> {
       resize();
       window.addEventListener("resize", resize);
       await renderer.setAnimationLoop((time) => {
-        if (testScene !== null) {
+        if (sceneGraph !== null) {
           animationStartTime ??= time;
           const elapsedSeconds = (time - animationStartTime) / 1000;
           const sourceObservation =
@@ -167,18 +159,18 @@ async function start(): Promise<void> {
             elapsedSeconds,
             faceObservation,
           );
-          testScene.update(elapsedSeconds, frame);
+          sceneGraph.update(elapsedSeconds, frame);
           renderer.renderToTarget(
-            testScene.sourceScene,
-            testScene.sourceCamera,
-            testScene.sourceTarget,
+            sceneGraph.sourceScene,
+            sceneGraph.sourceCamera,
+            sceneGraph.sourceTarget,
           );
           renderer.renderBloom();
         }
       });
     } catch (error) {
       if (resize !== null) window.removeEventListener("resize", resize);
-      testScene?.dispose();
+      sceneGraph?.dispose();
       faceObservationSource.dispose?.();
       imageSource.dispose();
       await renderer.dispose();
@@ -197,7 +189,7 @@ async function start(): Promise<void> {
       "pagehide",
       () => {
         if (resize !== null) window.removeEventListener("resize", resize);
-        testScene?.dispose();
+        sceneGraph?.dispose();
         faceObservationSource.dispose?.();
         imageSource.dispose();
         void renderer.dispose();
