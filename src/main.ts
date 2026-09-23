@@ -66,9 +66,8 @@ async function start(): Promise<void> {
     let imageSource: ImageSource =
       fixtureSource ?? cameraSource ?? new TestPatternImageSource();
     let cameraAvailable = false;
-    let faceObservationSource: FaceObservationSource & {
-      dispose?: () => void;
-    } = new NoFaceObservationSource();
+    let faceObservationSource: FaceObservationSource =
+      new NoFaceObservationSource();
     let sceneGraph: KaleidoscopeSceneGraph | null = null;
     let resize: (() => void) | null = null;
     let animationStartTime: number | null = null;
