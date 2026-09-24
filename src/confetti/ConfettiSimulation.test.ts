@@ -10,7 +10,6 @@ import {
 
 function createState(): ConfettiParticleState {
   return {
-    active: false,
     x: 0,
     y: 0,
     rotation: 0,
@@ -31,8 +30,8 @@ describe("ConfettiSimulation", () => {
     const stateA = createState();
     const stateB = createState();
 
-    a.sample(0, 3.25, stateA);
-    b.sample(0, 3.25, stateB);
+    expect(a.sample(0, 3.25, stateA)).toBe(true);
+    expect(b.sample(0, 3.25, stateB)).toBe(true);
 
     expect(stateA).toEqual(stateB);
   });
@@ -43,8 +42,7 @@ describe("ConfettiSimulation", () => {
     let activeCount = 0;
 
     for (let index = 0; index < simulation.capacity; index += 1) {
-      simulation.sample(index, 0, state);
-      if (state.active) activeCount += 1;
+      if (simulation.sample(index, 0, state)) activeCount += 1;
     }
 
     expect(activeCount).toBe(
@@ -59,8 +57,7 @@ describe("ConfettiSimulation", () => {
     const elapsedSeconds = 40.001;
 
     for (let index = 0; index < simulation.capacity; index += 1) {
-      simulation.sample(index, elapsedSeconds, state);
-      if (state.active) activeCount += 1;
+      if (simulation.sample(index, elapsedSeconds, state)) activeCount += 1;
     }
 
     expect(activeCount).toBe(
@@ -76,16 +73,16 @@ describe("ConfettiSimulation", () => {
     const firstSlotReuseTime =
       firstSlotSpawnTime + CONFETTI_CAPACITY / CONFETTI_SPAWN_RATE;
 
-    simulation.sample(0, firstSlotSpawnTime, firstState);
-    simulation.sample(
-      0,
-      firstSlotSpawnTime + CONFETTI_LIFETIME_SECONDS,
-      reusedState,
-    );
-    expect(reusedState.active).toBe(false);
+    expect(simulation.sample(0, firstSlotSpawnTime, firstState)).toBe(true);
+    expect(
+      simulation.sample(
+        0,
+        firstSlotSpawnTime + CONFETTI_LIFETIME_SECONDS,
+        reusedState,
+      ),
+    ).toBe(false);
 
-    simulation.sample(0, firstSlotReuseTime, reusedState);
-    expect(reusedState.active).toBe(true);
+    expect(simulation.sample(0, firstSlotReuseTime, reusedState)).toBe(true);
     expect(reusedState.x).not.toBe(firstState.x);
     expect(reusedState.rotation).not.toBe(firstState.rotation);
   });
@@ -94,7 +91,7 @@ describe("ConfettiSimulation", () => {
     const simulation = new ConfettiSimulation(123, 1);
     const state = createState();
 
-    simulation.sample(0, 0, state);
+    expect(simulation.sample(0, 0, state)).toBe(true);
 
     expect(state.brightness).toBeGreaterThanOrEqual(2.5);
     expect(state.brightness).toBeLessThanOrEqual(50);

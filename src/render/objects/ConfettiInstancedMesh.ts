@@ -49,7 +49,6 @@ export class ConfettiInstancedMesh {
 
   update(elapsedSeconds: number, aspect: number): void {
     const temporaryState: ConfettiParticleState = {
-      active: false,
       x: 0,
       y: 0,
       rotation: 0,
@@ -62,8 +61,9 @@ export class ConfettiInstancedMesh {
     let visibleIndex = 0;
 
     for (let index = 0; index < this.#simulation.capacity; index += 1) {
-      this.#simulation.sample(index, elapsedSeconds, temporaryState);
-      if (!temporaryState.active) continue;
+      if (!this.#simulation.sample(index, elapsedSeconds, temporaryState)) {
+        continue;
+      }
 
       const baseColor = palette[temporaryState.colorIndex] ?? palette[0];
       const flipScale = Math.max(

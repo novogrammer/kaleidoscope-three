@@ -4,7 +4,6 @@ export const CONFETTI_LIFETIME_SECONDS = 30;
 export const CONFETTI_PREWARM_SECONDS = 10;
 
 export type ConfettiParticleState = {
-  active: boolean;
   x: number;
   y: number;
   rotation: number;
@@ -24,7 +23,11 @@ export class ConfettiSimulation {
     this.#seed = seed;
   }
 
-  sample(index: number, elapsedSeconds: number, target: ConfettiParticleState): void {
+  sample(
+    index: number,
+    elapsedSeconds: number,
+    target: ConfettiParticleState,
+  ): boolean {
     if (!Number.isInteger(index) || index < 0 || index >= this.capacity) {
       throw new RangeError(`Confetti particle index is out of range: ${index}`);
     }
@@ -33,8 +36,7 @@ export class ConfettiSimulation {
       (elapsedSeconds + CONFETTI_PREWARM_SECONDS) * CONFETTI_SPAWN_RATE,
     );
     if (latestSpawnEvent < index) {
-      target.active = false;
-      return;
+      return false;
     }
 
     // Spawn events use slots in order and wrap only at the capacity limit.
@@ -49,8 +51,7 @@ export class ConfettiSimulation {
     const age = elapsedSeconds - spawnTime;
 
     if (age < 0 || age >= CONFETTI_LIFETIME_SECONDS) {
-      target.active = false;
-      return;
+      return false;
     }
 
     const spawnX = randomForSpawn(this.#seed, spawnEvent, 0) * 2 - 1;
@@ -80,13 +81,13 @@ export class ConfettiSimulation {
     const brightnessPhase = 1 - positiveModulo(age, 1);
     const brightnessEnvelope = 0.05 + Math.pow(brightnessPhase, 5) * 0.95;
 
-    target.active = true;
     target.x = spawnX + horizontalVelocity * age;
     target.y = 1.1 - fallSpeed * age * 0.1;
     target.rotation = initialRotation + angularVelocity * age;
     target.flip = flipOffset + flipSpeed * age;
     target.brightness = brightnessEnvelope * 50;
     target.colorIndex = colorIndex;
+    return true;
   }
 }
 
