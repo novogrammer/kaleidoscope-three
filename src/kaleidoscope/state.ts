@@ -1,20 +1,20 @@
 import type { FaceObservation } from "../face/FaceObservation";
 
-export type KaleidoscopeLayerState = {
-  center: { x: number; y: number };
+export type KaleidoscopeLayerState = Readonly<{
+  center: FaceObservation["center"];
   radiusMinimum: number;
   radiusMaximum: number;
   unitLength: number;
-};
+}>;
 
-export type KaleidoscopeFrameState = {
+export type KaleidoscopeFrameState = Readonly<{
   rotation: number;
   layers: readonly [
     KaleidoscopeLayerState,
     KaleidoscopeLayerState,
     KaleidoscopeLayerState,
   ];
-};
+}>;
 
 const angularVelocity = (10 * Math.PI) / 180;
 export const FACE_FADE_DURATION_SECONDS = 1;
@@ -57,11 +57,11 @@ export class KaleidoscopeStateController {
         : Math.max(0, elapsedSeconds - this.#previousElapsedSeconds);
 
     if (face.detected) {
-      this.#targetCenter = { ...face.center };
+      this.#targetCenter = face.center;
       this.#targetFaceHeight = face.size.height;
 
       if (!this.#hasDetectedFace) {
-        this.#smoothedCenter = { ...face.center };
+        this.#smoothedCenter = face.center;
         this.#smoothedFaceHeight = face.size.height;
         this.#hasDetectedFace = true;
       }
@@ -94,7 +94,7 @@ export class KaleidoscopeStateController {
       elapsedSeconds,
       {
         ...face,
-        center: { ...this.#smoothedCenter },
+        center: this.#smoothedCenter,
       },
       this.#fadeFactor,
       this.#scaleMainLayerWithFaceSize
@@ -118,7 +118,7 @@ export function calculateKaleidoscopeFrameState(
     rotation,
     layers: [
       {
-        center: { ...face.center },
+        center: face.center,
         radiusMinimum: 0,
         radiusMaximum: mainFadeFactor * mainRadiusMaximum,
         unitLength: Math.max(
@@ -172,13 +172,13 @@ function moveTowards(
 
 function createAuxiliaryLayer(
   phase: number,
-  positiveCenter: { x: number; y: number },
-  nonPositiveCenter: { x: number; y: number },
+  positiveCenter: FaceObservation["center"],
+  nonPositiveCenter: FaceObservation["center"],
 ): KaleidoscopeLayerState {
   const strength = Math.abs(phase);
 
   return {
-    center: { ...(phase > 0 ? positiveCenter : nonPositiveCenter) },
+    center: phase > 0 ? positiveCenter : nonPositiveCenter,
     radiusMinimum: 0,
     radiusMaximum: strength * dummyRadiusMaximum,
     unitLength: Math.max(

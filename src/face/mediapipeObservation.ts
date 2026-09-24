@@ -1,8 +1,5 @@
 import type { Detection } from "@mediapipe/tasks-vision";
-import {
-  createNoFaceObservation,
-  type FaceObservation,
-} from "./FaceObservation";
+import { NO_FACE_OBSERVATION, type FaceObservation } from "./FaceObservation";
 import {
   createFaceObservationFromBoundingBox,
   mirrorFaceObservationHorizontally,
@@ -30,7 +27,7 @@ export function createFaceObservationFromDetections(
   );
   const box = bestDetection?.boundingBox;
 
-  if (!box) return createNoFaceObservation();
+  if (!box) return NO_FACE_OBSERVATION;
 
   const observation = createFaceObservationFromBoundingBox(
     box,

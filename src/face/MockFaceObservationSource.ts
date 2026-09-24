@@ -7,7 +7,7 @@ const centeredFace = {
   size: { width: 0.36, height: 0.48 },
   confidence: 1,
   detected: true,
-} satisfies FaceObservation;
+} as const satisfies FaceObservation;
 
 export class MockFaceObservationSource implements FaceObservationSource {
   readonly #mode: MockMode;
@@ -25,31 +25,23 @@ export function sampleMockFaceObservation(
   mode: MockMode,
   elapsedSeconds: number,
 ): FaceObservation {
-  if (mode === "center") return cloneObservation(centeredFace);
+  if (mode === "center") return centeredFace;
 
   if (mode === "enter-exit") {
     const cycle = positiveModulo(elapsedSeconds, 6);
     return {
-      ...cloneObservation(centeredFace),
+      ...centeredFace,
       detected: cycle < 3,
       confidence: cycle < 3 ? 1 : 0,
     };
   }
 
   return {
-    ...cloneObservation(centeredFace),
+    ...centeredFace,
     center: {
       x: 0.5 + Math.sin(elapsedSeconds * 0.7) * 0.25,
       y: 0.5 + Math.cos(elapsedSeconds * 0.5) * 0.18,
     },
-  };
-}
-
-function cloneObservation(observation: FaceObservation): FaceObservation {
-  return {
-    ...observation,
-    center: { ...observation.center },
-    size: { ...observation.size },
   };
 }
 

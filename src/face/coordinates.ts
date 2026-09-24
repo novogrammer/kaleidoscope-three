@@ -67,6 +67,6 @@ export function mirrorFaceObservationHorizontally(
       x: 1 - observation.center.x,
       y: observation.center.y,
     },
-    size: { ...observation.size },
+    size: observation.size,
   };
 }

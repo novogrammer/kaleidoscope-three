@@ -1,18 +1,7 @@
-import {
-  FaceDetector,
-  FilesetResolver,
-  type Detection,
-} from "@mediapipe/tasks-vision";
-import wasmSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_internal.wasm?url";
-import wasmSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_internal.js?url";
-import wasmNoSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url";
-import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
-import modelAssetPath from "../assets/models/blaze_face_short_range.tflite?url";
+import type { Detection, FaceDetector } from "@mediapipe/tasks-vision";
 import { TimingWindow } from "../diagnostics/TimingWindow";
-import {
-  createNoFaceObservation,
-  type FaceObservation,
-} from "./FaceObservation";
+import { createMediaPipeFaceDetector } from "./createMediaPipeFaceDetector";
+import { NO_FACE_OBSERVATION, type FaceObservation } from "./FaceObservation";
 import type { FaceObservationSource } from "./FaceObservationSource";
 import { calculateDetectionFrameSize } from "./detectionFrame";
 import { createFaceObservationFromDetections } from "./mediapipeObservation";
@@ -55,12 +44,7 @@ export class MediaPipeFaceObservationSource
     image: HTMLImageElement,
     options: MediaPipeFaceObservationOptions,
   ): Promise<void> {
-    await this.#initializeSource(
-      { kind: "image", source: image },
-      image.naturalWidth,
-      image.naturalHeight,
-      options,
-    );
+    await this.#initializeSource({ kind: "image", source: image }, options);
   }
 
   async initializeVideo(
@@ -69,20 +53,24 @@ export class MediaPipeFaceObservationSource
   ): Promise<void> {
     await this.#initializeSource(
       { kind: "video", source: video, lastVideoTime: -1 },
-      video.videoWidth,
-      video.videoHeight,
       options,
     );
   }
 
   async #initializeSource(
     input: DetectionInput,
-    sourceWidth: number,
-    sourceHeight: number,
     options: MediaPipeFaceObservationOptions,
   ): Promise<void> {
     if (this.#session !== null) return;
 
+    const sourceWidth =
+      input.kind === "image"
+        ? input.source.naturalWidth
+        : input.source.videoWidth;
+    const sourceHeight =
+      input.kind === "image"
+        ? input.source.naturalHeight
+        : input.source.videoHeight;
     const detectionCanvas = document.createElement("canvas");
     const detectionSize = calculateDetectionFrameSize(
       sourceWidth,
@@ -98,7 +86,7 @@ export class MediaPipeFaceObservationSource
       throw new Error("Could not create the face detection canvas context.");
     }
 
-    const detector = await createDetector(
+    const detector = await createMediaPipeFaceDetector(
       input.kind === "image" ? "IMAGE" : "VIDEO",
     );
     this.#session = {
@@ -110,22 +98,17 @@ export class MediaPipeFaceObservationSource
       timings: import.meta.env.DEV
         ? new TimingWindow(DETECTION_TIMING_SAMPLE_COUNT)
         : null,
-      observation: createNoFaceObservation(),
+      observation: NO_FACE_OBSERVATION,
       lastDetectionTimeMs: -Infinity,
     };
   }
 
   sample(elapsedSeconds: number): FaceObservation {
     const session = this.#session;
-    if (session === null) return createNoFaceObservation();
+    if (session === null) return NO_FACE_OBSERVATION;
 
     this.#detectFrame(session, elapsedSeconds * 1000);
-
-    return {
-      ...session.observation,
-      center: { ...session.observation.center },
-      size: { ...session.observation.size },
-    };
+    return session.observation;
   }
 
   dispose(): void {
@@ -160,13 +143,14 @@ export class MediaPipeFaceObservationSource
     session: DetectionSession,
     timestampMs: number,
   ): Detection[] {
-    if (session.timings === null) {
+    const timings = session.timings;
+    if (timings === null) {
       return this.#runDetectionPipeline(session, timestampMs);
     }
 
     const detectionStart = performance.now();
     const detections = this.#runDetectionPipeline(session, timestampMs);
-    this.#recordDetectionTime(session, performance.now() - detectionStart);
+    this.#recordDetectionTime(timings, performance.now() - detectionStart);
     return detections;
   }
 
@@ -188,12 +172,10 @@ export class MediaPipeFaceObservationSource
   }
 
   #recordDetectionTime(
-    session: DetectionSession,
+    timings: TimingWindow,
     milliseconds: number,
   ): void {
-    if (session.timings === null) return;
-
-    const summary = session.timings.record(milliseconds);
+    const summary = timings.record(milliseconds);
     if (
       summary.totalSampleCount % DETECTION_TIMING_SAMPLE_COUNT !== 0
     ) {
@@ -208,34 +190,4 @@ export class MediaPipeFaceObservationSource
         `15 fps budget=${FACE_DETECTION_INTERVAL_MS.toFixed(1)} ms`,
     );
   }
-}
-
-async function createVisionFileset() {
-  const isSimdSupported = await FilesetResolver.isSimdSupported();
-
-  return isSimdSupported
-    ? {
-        wasmLoaderPath: wasmSimdLoaderPath,
-        wasmBinaryPath: wasmSimdBinaryPath,
-      }
-    : {
-        wasmLoaderPath: wasmNoSimdLoaderPath,
-        wasmBinaryPath: wasmNoSimdBinaryPath,
-      };
-}
-
-async function createDetector(
-  runningMode: "IMAGE" | "VIDEO",
-): Promise<FaceDetector> {
-  const vision = await createVisionFileset();
-
-  return FaceDetector.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath,
-      delegate: "CPU",
-    },
-    runningMode,
-    minDetectionConfidence: 0.5,
-    minSuppressionThreshold: 0.3,
-  });
 }

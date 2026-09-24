@@ -8,6 +8,8 @@ import {
 } from "../../kaleidoscope/coordinates.tsl";
 import type { KaleidoscopeFrameState } from "../../kaleidoscope/state";
 
+const layerIndices = [0, 1, 2] as const;
+
 export class KaleidoscopeMaterial extends MeshBasicNodeMaterial {
   readonly #resolution = uniform(new Vector2(1, 1));
   readonly #rotation = uniform(0);
@@ -64,22 +66,12 @@ export class KaleidoscopeMaterial extends MeshBasicNodeMaterial {
   updateFrame(frame: KaleidoscopeFrameState): void {
     this.#rotation.value = frame.rotation;
 
-    for (let index = 0; index < frame.layers.length; index += 1) {
+    for (const index of layerIndices) {
       const layer = frame.layers[index];
       const center = this.#centers[index];
       const unitLength = this.#unitLengths[index];
       const minimumRadius = this.#minimumRadii[index];
       const maximumRadius = this.#maximumRadii[index];
-
-      if (
-        layer === undefined ||
-        center === undefined ||
-        unitLength === undefined ||
-        minimumRadius === undefined ||
-        maximumRadius === undefined
-      ) {
-        continue;
-      }
 
       center.value.set(layer.center.x, layer.center.y);
       unitLength.value = layer.unitLength;

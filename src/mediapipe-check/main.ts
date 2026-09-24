@@ -1,13 +1,8 @@
 import {
-  FaceDetector,
-  FilesetResolver,
+  type FaceDetector,
   type FaceDetectorResult,
 } from "@mediapipe/tasks-vision";
-import wasmSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_internal.wasm?url";
-import wasmSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_internal.js?url";
-import wasmNoSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url";
-import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
-import modelAssetPath from "../assets/models/blaze_face_short_range.tflite?url";
+import { createMediaPipeFaceDetector } from "../face/createMediaPipeFaceDetector";
 import { waitForVideoDimensions } from "../input/images/videoDimensions";
 
 import "./style.css";
@@ -64,16 +59,7 @@ async function start(): Promise<void> {
     drawFrame();
 
     setStatus("MediaPipeを初期化しています…");
-    const vision = await createVisionFileset();
-    detector = await FaceDetector.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath,
-        delegate: "CPU",
-      },
-      runningMode: "VIDEO",
-      minDetectionConfidence: 0.5,
-      minSuppressionThreshold: 0.3,
-    });
+    detector = await createMediaPipeFaceDetector("VIDEO");
 
     setStatus("検出を開始しました");
   } catch (error) {
@@ -175,20 +161,6 @@ function stop(): void {
   if (status.dataset.error !== "true") {
     setStatus("停止しました");
   }
-}
-
-async function createVisionFileset() {
-  const isSimdSupported = await FilesetResolver.isSimdSupported();
-
-  return isSimdSupported
-    ? {
-        wasmLoaderPath: wasmSimdLoaderPath,
-        wasmBinaryPath: wasmSimdBinaryPath,
-      }
-    : {
-        wasmLoaderPath: wasmNoSimdLoaderPath,
-        wasmBinaryPath: wasmNoSimdBinaryPath,
-      };
 }
 
 function setStatus(message: string): void {

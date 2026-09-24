@@ -59,10 +59,6 @@ async function start(): Promise<void> {
   startStatus.textContent = "描画を初期化しています…";
 
   try {
-    const mediaPipeModule =
-      config.mock === null
-        ? await import("./face/MediaPipeFaceObservationSource")
-        : null;
     const renderer = new RendererController(
       canvas,
       config.output,
@@ -81,7 +77,6 @@ async function start(): Promise<void> {
       config.input === "camera" ? new CameraImageSource() : null;
     let imageSource: ImageSource =
       fixtureSource ?? cameraSource ?? new TestPatternImageSource();
-    let cameraAvailable = false;
     let faceObservationSource: FaceObservationSource =
       new NoFaceObservationSource();
     let sceneGraph: KaleidoscopeSceneGraph | null = null;
@@ -92,6 +87,17 @@ async function start(): Promise<void> {
     const kaleidoscopeState = new KaleidoscopeStateController({
       scaleMainLayerWithFaceSize: config.faceScale === "dynamic",
     });
+    const disposeResources = async (): Promise<void> => {
+      if (resize !== null) {
+        window.removeEventListener("resize", resize);
+        resize = null;
+      }
+      sceneGraph?.dispose();
+      sceneGraph = null;
+      faceObservationSource.dispose?.();
+      imageSource.dispose();
+      await renderer.dispose();
+    };
 
     try {
       await renderer.initialize();
@@ -99,7 +105,6 @@ async function start(): Promise<void> {
         startStatus.textContent = "前面カメラを初期化しています…";
         try {
           await cameraSource.initialize();
-          cameraAvailable = true;
         } catch (cameraError) {
           console.warn(
             "Camera input is unavailable. Using the fallback texture.",
@@ -112,21 +117,27 @@ async function start(): Promise<void> {
       } else {
         await imageSource.initialize();
       }
+      const activeCameraSource =
+        cameraSource !== null && imageSource === cameraSource
+          ? cameraSource
+          : null;
 
       if (config.mock !== null) {
         faceObservationSource = new MockFaceObservationSource(config.mock);
-      } else if (mediaPipeModule !== null) {
+      } else if (fixtureSource !== null || activeCameraSource !== null) {
+        const { MediaPipeFaceObservationSource } = await import(
+          "./face/MediaPipeFaceObservationSource"
+        );
         startStatus.textContent = "顔を検出しています…";
-        const mediaPipeSource =
-          new mediaPipeModule.MediaPipeFaceObservationSource();
+        const mediaPipeSource = new MediaPipeFaceObservationSource();
         try {
           if (fixtureSource !== null) {
             await mediaPipeSource.initializeImage(fixtureSource.image, {
               mirrorHorizontally: false,
             });
             faceObservationSource = mediaPipeSource;
-          } else if (cameraSource !== null && cameraAvailable) {
-            await mediaPipeSource.initializeVideo(cameraSource.video, {
+          } else if (activeCameraSource !== null) {
+            await mediaPipeSource.initializeVideo(activeCameraSource.video, {
               mirrorHorizontally: true,
             });
             faceObservationSource = mediaPipeSource;
@@ -140,23 +151,28 @@ async function start(): Promise<void> {
           inputStatus.textContent = "入力設定: 顔検出利用不可 / 補助表示";
         }
       }
-      sceneGraph = new KaleidoscopeSceneGraph(
+      const initializedSceneGraph = new KaleidoscopeSceneGraph(
         imageSource.texture,
         imageSource.width,
         imageSource.height,
-        cameraAvailable,
+        activeCameraSource !== null,
       );
+      sceneGraph = initializedSceneGraph;
       const kaleidoscopeEnabled = config.kaleidoscope === "on";
       renderer.configureBloom(
-        kaleidoscopeEnabled ? sceneGraph.scene : sceneGraph.sourceScene,
-        kaleidoscopeEnabled ? sceneGraph.camera : sceneGraph.sourceCamera,
+        kaleidoscopeEnabled
+          ? initializedSceneGraph.scene
+          : initializedSceneGraph.sourceScene,
+        kaleidoscopeEnabled
+          ? initializedSceneGraph.camera
+          : initializedSceneGraph.sourceCamera,
       );
 
       resize = () => {
         const viewport = renderer.resize();
         viewportWidth = viewport.width;
         viewportHeight = viewport.height;
-        sceneGraph?.resize(
+        initializedSceneGraph.resize(
           viewport.width,
           viewport.height,
           viewport.pixelRatio,
@@ -166,52 +182,45 @@ async function start(): Promise<void> {
       resize();
       window.addEventListener("resize", resize);
       await renderer.setAnimationLoop((time) => {
-        if (sceneGraph !== null) {
-          animationStartTime ??= time;
-          const elapsedSeconds = (time - animationStartTime) / 1000;
-          let sourceObservation: FaceObservation;
-          try {
-            sourceObservation = faceObservationSource.sample(elapsedSeconds);
-          } catch (faceObservationError) {
-            console.warn(
-              "Face detection failed while running. Continuing without it.",
-              faceObservationError,
-            );
-            faceObservationSource.dispose?.();
-            faceObservationSource = new NoFaceObservationSource();
-            inputStatus.textContent =
-              "入力設定: 顔検出実行エラー / 補助表示";
-            sourceObservation =
-              faceObservationSource.sample(elapsedSeconds);
-          }
-          const faceObservation = mapSourceObservationToAspectCoordinates(
-            sourceObservation,
-            viewportWidth,
-            viewportHeight,
-            imageSource.width,
-            imageSource.height,
+        animationStartTime ??= time;
+        const elapsedSeconds = (time - animationStartTime) / 1000;
+        let sourceObservation: FaceObservation;
+        try {
+          sourceObservation = faceObservationSource.sample(elapsedSeconds);
+        } catch (faceObservationError) {
+          console.warn(
+            "Face detection failed while running. Continuing without it.",
+            faceObservationError,
           );
-          const frame = kaleidoscopeState.update(
-            elapsedSeconds,
-            faceObservation,
-          );
-          sceneGraph.update(elapsedSeconds, frame);
-          if (kaleidoscopeEnabled) {
-            renderer.renderToTarget(
-              sceneGraph.sourceScene,
-              sceneGraph.sourceCamera,
-              sceneGraph.sourceTarget,
-            );
-          }
-          renderer.renderBloom();
+          faceObservationSource.dispose?.();
+          faceObservationSource = new NoFaceObservationSource();
+          inputStatus.textContent =
+            "入力設定: 顔検出実行エラー / 補助表示";
+          sourceObservation = faceObservationSource.sample(elapsedSeconds);
         }
+        const faceObservation = mapSourceObservationToAspectCoordinates(
+          sourceObservation,
+          viewportWidth,
+          viewportHeight,
+          imageSource.width,
+          imageSource.height,
+        );
+        const frame = kaleidoscopeState.update(
+          elapsedSeconds,
+          faceObservation,
+        );
+        initializedSceneGraph.update(elapsedSeconds, frame);
+        if (kaleidoscopeEnabled) {
+          renderer.renderToTarget(
+            initializedSceneGraph.sourceScene,
+            initializedSceneGraph.sourceCamera,
+            initializedSceneGraph.sourceTarget,
+          );
+        }
+        renderer.renderBloom();
       });
     } catch (error) {
-      if (resize !== null) window.removeEventListener("resize", resize);
-      sceneGraph?.dispose();
-      faceObservationSource.dispose?.();
-      imageSource.dispose();
-      await renderer.dispose();
+      await disposeResources();
       throw error;
     }
 
@@ -226,11 +235,7 @@ async function start(): Promise<void> {
     window.addEventListener(
       "pagehide",
       () => {
-        if (resize !== null) window.removeEventListener("resize", resize);
-        sceneGraph?.dispose();
-        faceObservationSource.dispose?.();
-        imageSource.dispose();
-        void renderer.dispose();
+        void disposeResources();
       },
       { once: true },
     );
@@ -249,15 +254,14 @@ function formatInputStatus(value: ReturnType<typeof parseAppConfig>): string {
     value.faceScale === "dynamic" ? " / 顔サイズ連動" : "";
   const kaleidoscope =
     value.kaleidoscope === "off" ? " / 万華鏡なし" : "";
+  const face =
+    value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
 
   if (value.input === "camera") {
-    const face = value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
     return `入力設定: 前面カメラ / ${face}${faceScale}${kaleidoscope}`;
   }
 
-  const mock =
-    value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
-  return `入力設定: ${value.fixture} / ${mock}${faceScale}${kaleidoscope}`;
+  return `入力設定: ${value.fixture} / ${face}${faceScale}${kaleidoscope}`;
 }
 
 function showContextRecovery(message: string): void {
