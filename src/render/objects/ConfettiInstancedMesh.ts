@@ -30,17 +30,6 @@ export class ConfettiInstancedMesh {
   readonly #simulation = new ConfettiSimulation();
   readonly #geometry = new PlaneGeometry(1, 1);
   readonly #material = new MeshBasicNodeMaterial();
-  readonly #transform = new Object3D();
-  readonly #color = new Color();
-  readonly #state: ConfettiParticleState = {
-    active: false,
-    x: 0,
-    y: 0,
-    rotation: 0,
-    flip: 0,
-    brightness: 0,
-    colorIndex: 0,
-  };
 
   constructor() {
     this.#material.colorNode = vec4(instanceColor, 1);
@@ -59,31 +48,49 @@ export class ConfettiInstancedMesh {
   }
 
   update(elapsedSeconds: number, aspect: number): void {
+    const temporaryState: ConfettiParticleState = {
+      active: false,
+      x: 0,
+      y: 0,
+      rotation: 0,
+      flip: 0,
+      brightness: 0,
+      colorIndex: 0,
+    };
+    const temporaryTransform = new Object3D();
+    const temporaryColor = new Color();
     let visibleIndex = 0;
 
     for (let index = 0; index < this.#simulation.capacity; index += 1) {
-      this.#simulation.sample(index, elapsedSeconds, this.#state);
-      if (!this.#state.active) continue;
+      this.#simulation.sample(index, elapsedSeconds, temporaryState);
+      if (!temporaryState.active) continue;
 
-      const baseColor = palette[this.#state.colorIndex] ?? palette[0];
-      const flipScale = Math.max(0.08, Math.abs(Math.cos(this.#state.flip)));
+      const baseColor = palette[temporaryState.colorIndex] ?? palette[0];
+      const flipScale = Math.max(
+        0.08,
+        Math.abs(Math.cos(temporaryState.flip)),
+      );
 
-      this.#transform.position.set(this.#state.x * aspect, this.#state.y, 0);
-      this.#transform.rotation.set(0, 0, this.#state.rotation);
-      this.#transform.scale.set(
+      temporaryTransform.position.set(
+        temporaryState.x * aspect,
+        temporaryState.y,
+        0,
+      );
+      temporaryTransform.rotation.set(0, 0, temporaryState.rotation);
+      temporaryTransform.scale.set(
         particleWidth,
         particleHeight * flipScale,
         1,
       );
-      this.#transform.updateMatrix();
-      this.mesh.setMatrixAt(visibleIndex, this.#transform.matrix);
+      temporaryTransform.updateMatrix();
+      this.mesh.setMatrixAt(visibleIndex, temporaryTransform.matrix);
 
-      this.#color.setRGB(
-        baseColor[0] * this.#state.brightness,
-        baseColor[1] * this.#state.brightness,
-        baseColor[2] * this.#state.brightness,
+      temporaryColor.setRGB(
+        baseColor[0] * temporaryState.brightness,
+        baseColor[1] * temporaryState.brightness,
+        baseColor[2] * temporaryState.brightness,
       );
-      this.mesh.setColorAt(visibleIndex, this.#color);
+      this.mesh.setColorAt(visibleIndex, temporaryColor);
       visibleIndex += 1;
     }
 
