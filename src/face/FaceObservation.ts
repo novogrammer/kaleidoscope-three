@@ -5,9 +5,18 @@ export type FaceObservation = Readonly<{
   detected: boolean;
 }>;
 
+export interface FaceObservationSource {
+  sample(elapsedSeconds: number): FaceObservation;
+  dispose?(): void;
+}
+
 export const NO_FACE_OBSERVATION = {
   center: { x: 0.5, y: 0.5 },
   size: { width: 0, height: 0 },
   confidence: 0,
   detected: false,
 } as const satisfies FaceObservation;
+
+export const NO_FACE_OBSERVATION_SOURCE = {
+  sample: () => NO_FACE_OBSERVATION,
+} as const satisfies FaceObservationSource;

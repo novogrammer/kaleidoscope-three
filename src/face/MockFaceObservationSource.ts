@@ -1,6 +1,8 @@
 import type { MockMode } from "../app/config";
-import type { FaceObservation } from "./FaceObservation";
-import type { FaceObservationSource } from "./FaceObservationSource";
+import type {
+  FaceObservation,
+  FaceObservationSource,
+} from "./FaceObservation";
 
 const centeredFace = {
   center: { x: 0.5, y: 0.5 },

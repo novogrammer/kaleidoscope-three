@@ -1,10 +1,12 @@
 import "./style.css";
 
 import { parseAppConfig } from "./app/config";
-import type { FaceObservation } from "./face/FaceObservation";
-import type { FaceObservationSource } from "./face/FaceObservationSource";
+import {
+  NO_FACE_OBSERVATION_SOURCE,
+  type FaceObservation,
+  type FaceObservationSource,
+} from "./face/FaceObservation";
 import { MockFaceObservationSource } from "./face/MockFaceObservationSource";
-import { NoFaceObservationSource } from "./face/NoFaceObservationSource";
 import { mapSourceObservationToAspectCoordinates } from "./face/coordinates";
 import { CameraImageSource } from "./input/images/CameraImageSource";
 import { FixtureImageSource } from "./input/images/FixtureImageSource";
@@ -78,7 +80,7 @@ async function start(): Promise<void> {
     let imageSource: ImageSource =
       fixtureSource ?? cameraSource ?? new TestPatternImageSource();
     let faceObservationSource: FaceObservationSource =
-      new NoFaceObservationSource();
+      NO_FACE_OBSERVATION_SOURCE;
     let sceneGraph: KaleidoscopeSceneGraph | null = null;
     let resize: (() => void) | null = null;
     let animationStartTime: number | null = null;
@@ -193,7 +195,7 @@ async function start(): Promise<void> {
             faceObservationError,
           );
           faceObservationSource.dispose?.();
-          faceObservationSource = new NoFaceObservationSource();
+          faceObservationSource = NO_FACE_OBSERVATION_SOURCE;
           inputStatus.textContent =
             "入力設定: 顔検出実行エラー / 補助表示";
           sourceObservation = faceObservationSource.sample(elapsedSeconds);

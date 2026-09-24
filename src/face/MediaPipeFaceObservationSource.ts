@@ -1,8 +1,11 @@
 import type { Detection, FaceDetector } from "@mediapipe/tasks-vision";
 import { TimingWindow } from "../diagnostics/TimingWindow";
 import { createMediaPipeFaceDetector } from "./createMediaPipeFaceDetector";
-import { NO_FACE_OBSERVATION, type FaceObservation } from "./FaceObservation";
-import type { FaceObservationSource } from "./FaceObservationSource";
+import {
+  NO_FACE_OBSERVATION,
+  type FaceObservation,
+  type FaceObservationSource,
+} from "./FaceObservation";
 import { calculateDetectionFrameSize } from "./detectionFrame";
 import { createFaceObservationFromDetections } from "./mediapipeObservation";
 
