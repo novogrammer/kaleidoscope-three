@@ -231,9 +231,9 @@ async function start(): Promise<void> {
       { once: true },
     );
   } catch (error) {
-    console.error("Failed to initialize the renderer.", error);
+    console.error("Failed to initialize the application.", error);
     startStatus.textContent =
-      "描画を開始できませんでした。WebGPUまたはWebGL 2を利用できるブラウザで再度お試しください。";
+      "アプリケーションを開始できませんでした。ページを再読み込みして再度お試しください。";
     startButton.disabled = false;
     app.dataset.state = "error";
     isStarting = false;
