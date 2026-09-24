@@ -193,6 +193,8 @@ Volume Profileで確認できる主要な値は次のとおり。
 
 WebGPU、HDRディスプレイ出力、MediaPipeの性能はブラウザと端末によって異なるため、すべての対象で同一機能を前提としない。WebGPUを利用できない場合はWebGL 2へ、HDRディスプレイ出力を利用できない場合はSDR出力へフォールバックする。GPU性能が不足する場合の細かな品質段階や機種別最適化は、初期対応の範囲外とする。
 
+WebGL描画中のコンテキスト喪失またはWebGPUのdevice lossが発生した場合、使用中のrendererとGPU資源はインプレース復旧せず、エラー状態を維持してページの再読み込みを案内する。`webglcontextrestored`が通知されてもUIだけを実行中へ戻さず、再読み込み後の開始操作によって描画環境を再構築する。意図的なrenderer破棄によるdevice lossは再読み込み案内の対象にしない。
+
 ### Webカメラと顔検出
 
 - 前面カメラを使用し、`navigator.mediaDevices.getUserMedia()`へ`facingMode: "user"`を指定する。

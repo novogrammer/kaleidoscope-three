@@ -27,6 +27,7 @@ const MAX_PIXEL_RATIO = 2;
 export const SDR_TONE_MAPPING_EXPOSURE = 1;
 
 export type RendererBackend = "webgpu" | "webgl2";
+export type RendererDeviceLostHandler = () => void;
 
 export type RendererViewport = {
   width: number;
@@ -38,6 +39,7 @@ export class RendererController {
   readonly #canvas: HTMLCanvasElement;
   readonly #outputPreference: DisplayOutputPreference;
   readonly #backendPreference: RendererBackendPreference;
+  readonly #onDeviceLost: RendererDeviceLostHandler | undefined;
   #renderer: WebGPURenderer | null = null;
   #backend: RendererBackend | null = null;
   #outputMode: DisplayOutputMode | null = null;
@@ -47,10 +49,12 @@ export class RendererController {
     canvas: HTMLCanvasElement,
     outputPreference: DisplayOutputPreference = "auto",
     backendPreference: RendererBackendPreference = "auto",
+    onDeviceLost?: RendererDeviceLostHandler,
   ) {
     this.#canvas = canvas;
     this.#outputPreference = outputPreference;
     this.#backendPreference = backendPreference;
+    this.#onDeviceLost = onDeviceLost;
   }
 
   get outputMode(): DisplayOutputMode {
@@ -104,6 +108,7 @@ export class RendererController {
 
     const backend = renderer.backend as { isWebGPUBackend?: boolean };
     this.#renderer = renderer;
+    this.#observeDeviceLoss(renderer);
     this.#backend = backend.isWebGPUBackend === true ? "webgpu" : "webgl2";
     this.#outputMode =
       hdrInitialized && this.#backend === "webgpu" ? "hdr" : "sdr";
@@ -192,6 +197,15 @@ export class RendererController {
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.toneMapping = ACESFilmicToneMapping;
     renderer.toneMappingExposure = SDR_TONE_MAPPING_EXPOSURE;
+  }
+
+  #observeDeviceLoss(renderer: WebGPURenderer): void {
+    const defaultHandler = renderer.onDeviceLost.bind(renderer);
+
+    renderer.onDeviceLost = (info) => {
+      defaultHandler(info);
+      if (this.#renderer === renderer) this.#onDeviceLost?.();
+    };
   }
 
   #requireRenderer(): WebGPURenderer {

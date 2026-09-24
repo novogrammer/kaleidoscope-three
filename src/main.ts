@@ -26,19 +26,29 @@ const inputStatus = getElement<HTMLElement>("input-status");
 
 const config = parseAppConfig(window.location.search);
 let isStarting = false;
+let reloadRequired = false;
 
 inputStatus.textContent = formatInputStatus(config);
-startButton.addEventListener("click", () => void start());
+startButton.addEventListener("click", () => {
+  if (reloadRequired) {
+    window.location.reload();
+    return;
+  }
+
+  void start();
+});
 
 canvas.addEventListener("webglcontextlost", (event) => {
   event.preventDefault();
-  backendStatus.textContent = "描画コンテキストが失われました";
-  app.dataset.state = "error";
+  showContextRecovery(
+    "描画コンテキストが失われました。再読み込みして描画を開始し直してください。",
+  );
 });
 
 canvas.addEventListener("webglcontextrestored", () => {
-  backendStatus.textContent = "描画コンテキストを復元しました";
-  app.dataset.state = "running";
+  showContextRecovery(
+    "描画コンテキストは復元されました。再読み込みして描画を開始し直してください。",
+  );
 });
 
 async function start(): Promise<void> {
@@ -57,6 +67,11 @@ async function start(): Promise<void> {
       canvas,
       config.output,
       config.backend,
+      () => {
+        showContextRecovery(
+          "GPU描画デバイスが失われました。再読み込みして描画を開始し直してください。",
+        );
+      },
     );
     const fixtureSource =
       config.input === "fixture"
@@ -239,6 +254,16 @@ function formatInputStatus(value: ReturnType<typeof parseAppConfig>): string {
   const mock =
     value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
   return `入力設定: ${value.fixture} / ${mock}${faceScale}${kaleidoscope}`;
+}
+
+function showContextRecovery(message: string): void {
+  reloadRequired = true;
+  backendStatus.textContent = "描画コンテキストの再初期化が必要です";
+  startStatus.textContent = message;
+  startButton.textContent = "再読み込み / Reload";
+  startButton.disabled = false;
+  startScreen.hidden = false;
+  app.dataset.state = "error";
 }
 
 function getElement<T extends HTMLElement>(id: string): T {
