@@ -121,10 +121,14 @@ async function start(): Promise<void> {
           new mediaPipeModule.MediaPipeFaceObservationSource();
         try {
           if (fixtureSource !== null) {
-            await mediaPipeSource.initializeImage(fixtureSource.image);
+            await mediaPipeSource.initializeImage(fixtureSource.image, {
+              mirrorHorizontally: false,
+            });
             faceObservationSource = mediaPipeSource;
           } else if (cameraSource !== null && cameraAvailable) {
-            await mediaPipeSource.initializeVideo(cameraSource.video);
+            await mediaPipeSource.initializeVideo(cameraSource.video, {
+              mirrorHorizontally: true,
+            });
             faceObservationSource = mediaPipeSource;
           }
         } catch (mediaPipeError) {

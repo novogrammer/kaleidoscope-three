@@ -9,70 +9,80 @@ import wasmNoSimdBinaryPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_int
 import wasmNoSimdLoaderPath from "@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url";
 import modelAssetPath from "../assets/models/blaze_face_short_range.tflite?url";
 import { TimingWindow } from "../diagnostics/TimingWindow";
-import type { FaceObservation } from "./FaceObservation";
-import type { FaceObservationSource } from "./FaceObservationSource";
 import {
-  createFaceObservationFromBoundingBox,
-  mirrorFaceObservationHorizontally,
-} from "./coordinates";
+  createNoFaceObservation,
+  type FaceObservation,
+} from "./FaceObservation";
+import type { FaceObservationSource } from "./FaceObservationSource";
 import { calculateDetectionFrameSize } from "./detectionFrame";
+import { createFaceObservationFromDetections } from "./mediapipeObservation";
 
 export const FACE_DETECTION_INTERVAL_MS = 1000 / 15;
 const DETECTION_TIMING_SAMPLE_COUNT = 60;
 
-const noFace = {
-  center: { x: 0.5, y: 0.5 },
-  size: { width: 0, height: 0 },
-  confidence: 0,
-  detected: false,
-} satisfies FaceObservation;
+export type MediaPipeFaceObservationOptions = Readonly<{
+  mirrorHorizontally: boolean;
+}>;
+
+type DetectionInput =
+  | Readonly<{
+      kind: "image";
+      source: HTMLImageElement;
+    }>
+  | {
+      kind: "video";
+      source: HTMLVideoElement;
+      lastVideoTime: number;
+    };
+
+type DetectionSession = {
+  readonly detector: FaceDetector;
+  readonly input: DetectionInput;
+  readonly canvas: HTMLCanvasElement;
+  readonly context: CanvasRenderingContext2D;
+  readonly mirrorHorizontally: boolean;
+  readonly timings: TimingWindow | null;
+  observation: FaceObservation;
+  lastDetectionTimeMs: number;
+};
 
 export class MediaPipeFaceObservationSource
   implements FaceObservationSource
 {
-  #detector: FaceDetector | null = null;
-  #observation: FaceObservation = noFace;
-  #source: CanvasImageSource | null = null;
-  #video: HTMLVideoElement | null = null;
-  #detectionCanvas: HTMLCanvasElement | null = null;
-  #detectionContext: CanvasRenderingContext2D | null = null;
-  #mirrorHorizontally = false;
-  #lastDetectionTimeMs = -Infinity;
-  #lastVideoTime = -1;
-  readonly #detectionTimings = import.meta.env.DEV
-    ? new TimingWindow(DETECTION_TIMING_SAMPLE_COUNT)
-    : null;
+  #session: DetectionSession | null = null;
 
-  async initializeImage(image: HTMLImageElement): Promise<void> {
+  async initializeImage(
+    image: HTMLImageElement,
+    options: MediaPipeFaceObservationOptions,
+  ): Promise<void> {
     await this.#initializeSource(
-      image,
+      { kind: "image", source: image },
       image.naturalWidth,
       image.naturalHeight,
-      "IMAGE",
-      false,
+      options,
     );
   }
 
-  async initializeVideo(video: HTMLVideoElement): Promise<void> {
+  async initializeVideo(
+    video: HTMLVideoElement,
+    options: MediaPipeFaceObservationOptions,
+  ): Promise<void> {
     await this.#initializeSource(
-      video,
+      { kind: "video", source: video, lastVideoTime: -1 },
       video.videoWidth,
       video.videoHeight,
-      "VIDEO",
-      true,
+      options,
     );
   }
 
   async #initializeSource(
-    source: CanvasImageSource,
+    input: DetectionInput,
     sourceWidth: number,
     sourceHeight: number,
-    runningMode: "IMAGE" | "VIDEO",
-    mirrorHorizontally: boolean,
+    options: MediaPipeFaceObservationOptions,
   ): Promise<void> {
-    if (this.#detector !== null) return;
+    if (this.#session !== null) return;
 
-    const detector = await createDetector(runningMode);
     const detectionCanvas = document.createElement("canvas");
     const detectionSize = calculateDetectionFrameSize(
       sourceWidth,
@@ -85,113 +95,105 @@ export class MediaPipeFaceObservationSource
     });
 
     if (detectionContext === null) {
-      detector.close();
       throw new Error("Could not create the face detection canvas context.");
     }
 
-    this.#detector = detector;
-    this.#source = source;
-    this.#video = source instanceof HTMLVideoElement ? source : null;
-    this.#detectionCanvas = detectionCanvas;
-    this.#detectionContext = detectionContext;
-    this.#mirrorHorizontally = mirrorHorizontally;
+    const detector = await createDetector(
+      input.kind === "image" ? "IMAGE" : "VIDEO",
+    );
+    this.#session = {
+      detector,
+      input,
+      canvas: detectionCanvas,
+      context: detectionContext,
+      mirrorHorizontally: options.mirrorHorizontally,
+      timings: import.meta.env.DEV
+        ? new TimingWindow(DETECTION_TIMING_SAMPLE_COUNT)
+        : null,
+      observation: createNoFaceObservation(),
+      lastDetectionTimeMs: -Infinity,
+    };
   }
 
   sample(elapsedSeconds: number): FaceObservation {
-    this.#detectFrame(elapsedSeconds * 1000);
+    const session = this.#session;
+    if (session === null) return createNoFaceObservation();
+
+    this.#detectFrame(session, elapsedSeconds * 1000);
 
     return {
-      ...this.#observation,
-      center: { ...this.#observation.center },
-      size: { ...this.#observation.size },
+      ...session.observation,
+      center: { ...session.observation.center },
+      size: { ...session.observation.size },
     };
   }
 
   dispose(): void {
-    this.#detector?.close();
-    this.#detector = null;
-    this.#source = null;
-    this.#video = null;
-    this.#detectionCanvas = null;
-    this.#detectionContext = null;
-    this.#mirrorHorizontally = false;
-    this.#observation = noFace;
-    this.#lastDetectionTimeMs = -Infinity;
-    this.#lastVideoTime = -1;
+    this.#session?.detector.close();
+    this.#session = null;
   }
 
-  #detectFrame(timestampMs: number): void {
+  #detectFrame(session: DetectionSession, timestampMs: number): void {
     if (
-      this.#detector === null ||
-      this.#source === null ||
-      timestampMs - this.#lastDetectionTimeMs < FACE_DETECTION_INTERVAL_MS ||
-      (this.#video !== null && this.#video.currentTime === this.#lastVideoTime)
+      timestampMs - session.lastDetectionTimeMs < FACE_DETECTION_INTERVAL_MS ||
+      (session.input.kind === "video" &&
+        session.input.source.currentTime === session.input.lastVideoTime)
     ) {
       return;
     }
 
-    const detections = this.#detectSourceFrame(timestampMs);
+    const detections = this.#detectSourceFrame(session, timestampMs);
 
-    this.#observation = createObservation(
+    session.observation = createFaceObservationFromDetections(
       detections,
-      this.#detectionCanvas?.width ?? 1,
-      this.#detectionCanvas?.height ?? 1,
-      this.#mirrorHorizontally,
+      session.canvas.width,
+      session.canvas.height,
+      session.mirrorHorizontally,
     );
-    this.#lastDetectionTimeMs = timestampMs;
-    if (this.#video !== null) {
-      this.#lastVideoTime = this.#video.currentTime;
+    session.lastDetectionTimeMs = timestampMs;
+    if (session.input.kind === "video") {
+      session.input.lastVideoTime = session.input.source.currentTime;
     }
   }
 
-  #detectSourceFrame(timestampMs: number): Detection[] {
-    if (
-      this.#detector === null ||
-      this.#source === null ||
-      this.#detectionCanvas === null ||
-      this.#detectionContext === null
-    ) {
-      return [];
-    }
-
-    if (this.#detectionTimings === null) {
-      return this.#runDetectionPipeline(timestampMs);
+  #detectSourceFrame(
+    session: DetectionSession,
+    timestampMs: number,
+  ): Detection[] {
+    if (session.timings === null) {
+      return this.#runDetectionPipeline(session, timestampMs);
     }
 
     const detectionStart = performance.now();
-    const detections = this.#runDetectionPipeline(timestampMs);
-    this.#recordDetectionTime(performance.now() - detectionStart);
+    const detections = this.#runDetectionPipeline(session, timestampMs);
+    this.#recordDetectionTime(session, performance.now() - detectionStart);
     return detections;
   }
 
-  #runDetectionPipeline(timestampMs: number): Detection[] {
-    if (
-      this.#detector === null ||
-      this.#source === null ||
-      this.#detectionCanvas === null ||
-      this.#detectionContext === null
-    ) {
-      return [];
-    }
-
-    this.#detectionContext.drawImage(
-      this.#source,
+  #runDetectionPipeline(
+    session: DetectionSession,
+    timestampMs: number,
+  ): Detection[] {
+    session.context.drawImage(
+      session.input.source,
       0,
       0,
-      this.#detectionCanvas.width,
-      this.#detectionCanvas.height,
+      session.canvas.width,
+      session.canvas.height,
     );
 
-    return this.#video === null
-      ? this.#detector.detect(this.#detectionCanvas).detections
-      : this.#detector.detectForVideo(this.#detectionCanvas, timestampMs)
-          .detections;
+    return session.input.kind === "image"
+      ? session.detector.detect(session.canvas).detections
+      : session.detector.detectForVideo(session.canvas, timestampMs).detections;
   }
 
-  #recordDetectionTime(milliseconds: number): void {
-    if (this.#detectionTimings === null) return;
+  #recordDetectionTime(
+    session: DetectionSession,
+    milliseconds: number,
+  ): void {
+    if (session.timings === null) return;
 
-    const summary = this.#detectionTimings.record(milliseconds);
+    const summary = session.timings.record(milliseconds);
     if (
       summary.totalSampleCount % DETECTION_TIMING_SAMPLE_COUNT !== 0
     ) {
@@ -222,10 +224,6 @@ async function createVisionFileset() {
       };
 }
 
-function confidenceOf(detection: Detection): number {
-  return detection.categories[0]?.score ?? 0;
-}
-
 async function createDetector(
   runningMode: "IMAGE" | "VIDEO",
 ): Promise<FaceDetector> {
@@ -240,33 +238,4 @@ async function createDetector(
     minDetectionConfidence: 0.5,
     minSuppressionThreshold: 0.3,
   });
-}
-
-function createObservation(
-  detections: Detection[],
-  sourceWidth: number,
-  sourceHeight: number,
-  mirrorHorizontally: boolean,
-): FaceObservation {
-  const bestDetection = detections.reduce<Detection | null>(
-    (best, candidate) =>
-      best === null || confidenceOf(candidate) > confidenceOf(best)
-        ? candidate
-        : best,
-    null,
-  );
-  const box = bestDetection?.boundingBox;
-
-  if (bestDetection === null || !box) return noFace;
-
-  const observation = createFaceObservationFromBoundingBox(
-    box,
-    confidenceOf(bestDetection),
-    sourceWidth,
-    sourceHeight,
-  );
-
-  return mirrorHorizontally
-    ? mirrorFaceObservationHorizontally(observation)
-    : observation;
 }
