@@ -64,14 +64,6 @@ export function coverUv(
   };
 }
 
-/** CPU reference for Mirror_float in CustomFunctions.hlsl. */
-export function mirrorCoordinate(input: Vector2): Vector2 {
-  return {
-    x: Math.abs(input.x - 0.5) + 0.5,
-    y: input.y,
-  };
-}
-
 /** GLSL-style modulo. Unlike JavaScript's remainder, the result wraps negatives. */
 export function glslModulo(value: number, divisor: number): number {
   return value - divisor * Math.floor(value / divisor);

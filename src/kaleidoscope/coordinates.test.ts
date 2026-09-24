@@ -7,7 +7,6 @@ import {
   coverUv,
   foldKaleidoscopeCoordinate,
   glslModulo,
-  mirrorCoordinate,
   repeatHexCoordinate,
   rotateCoordinate,
   uvToAspectCoordinate,
@@ -44,17 +43,6 @@ describe("kaleidoscope coordinate CPU reference", () => {
     expectVector(coverUv({ x: 0.25, y: 0.25 }, 1080, 1920, 1024, 1024), {
       x: 0.359375,
       y: 0.25,
-    });
-  });
-
-  it("mirrors the left half across the horizontal center", () => {
-    expectVector(mirrorCoordinate({ x: 0.25, y: 0.4 }), {
-      x: 0.75,
-      y: 0.4,
-    });
-    expectVector(mirrorCoordinate({ x: 0.75, y: 0.4 }), {
-      x: 0.75,
-      y: 0.4,
     });
   });
 

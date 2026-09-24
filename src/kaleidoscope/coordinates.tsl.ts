@@ -64,10 +64,6 @@ export function coverUvTsl(
   );
 }
 
-export function mirrorCoordinateTsl(coordinate: Vec2Node): Vec2Node {
-  return coordinate.sub(0.5).abs().add(0.5);
-}
-
 function chooseNearerCoordinate(
   current: Vec2Node,
   candidate: Vec2Node,
