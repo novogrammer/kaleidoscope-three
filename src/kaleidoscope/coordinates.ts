@@ -197,7 +197,8 @@ export function calculateCircleMask(
     coordinate.y - center.y,
   );
   const normalized = clamp(
-    mapRange(distance, radiusMin, radiusMax, 0, 1),
+    (distance - radiusMin) /
+      Math.max(radiusMax - radiusMin, 0.000001),
     0,
     1,
   );
@@ -206,20 +207,6 @@ export function calculateCircleMask(
 
 function lengthSquared(value: Vector2): number {
   return value.x * value.x + value.y * value.y;
-}
-
-function mapRange(
-  value: number,
-  sourceMin: number,
-  sourceMax: number,
-  targetMin: number,
-  targetMax: number,
-): number {
-  return (
-    targetMin +
-    ((value - sourceMin) * (targetMax - targetMin)) /
-      (sourceMax - sourceMin)
-  );
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {

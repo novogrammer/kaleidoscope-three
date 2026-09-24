@@ -129,6 +129,15 @@ describe("kaleidoscope coordinate CPU reference", () => {
       10,
     );
   });
+
+  it("handles a zero-width circle mask like the TSL implementation", () => {
+    const center = { x: 0.5, y: 0.5 };
+
+    expect(calculateCircleMask(center, center, 0, 0)).toBe(1);
+    expect(
+      calculateCircleMask({ x: 0.501, y: 0.5 }, center, 0, 0),
+    ).toBe(0);
+  });
 });
 
 function expectVector(actual: Vector2, expected: Vector2): void {
