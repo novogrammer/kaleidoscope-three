@@ -11,17 +11,20 @@ export const INPUT_MODES = ["camera", "fixture"] as const;
 export const FIXTURE_NAMES = ["face-center", "face-offset", "no-face"] as const;
 export const MOCK_MODES = ["center", "enter-exit", "move"] as const;
 export const FACE_SCALE_MODES = ["fixed", "dynamic"] as const;
+export const KALEIDOSCOPE_MODES = ["on", "off"] as const;
 
 export type InputMode = (typeof INPUT_MODES)[number];
 export type FixtureName = (typeof FIXTURE_NAMES)[number];
 export type MockMode = (typeof MOCK_MODES)[number];
 export type FaceScaleMode = (typeof FACE_SCALE_MODES)[number];
+export type KaleidoscopeMode = (typeof KALEIDOSCOPE_MODES)[number];
 
 export type AppConfig = {
   input: InputMode;
   fixture: FixtureName;
   mock: MockMode | null;
   faceScale: FaceScaleMode;
+  kaleidoscope: KaleidoscopeMode;
   output: DisplayOutputPreference;
   backend: RendererBackendPreference;
 };
@@ -36,6 +39,8 @@ export function parseAppConfig(search: string): AppConfig {
     mock: readValue(parameters, "mock", MOCK_MODES),
     faceScale:
       readValue(parameters, "faceScale", FACE_SCALE_MODES) ?? "dynamic",
+    kaleidoscope:
+      readValue(parameters, "kaleidoscope", KALEIDOSCOPE_MODES) ?? "on",
     output:
       readValue(parameters, "output", DISPLAY_OUTPUT_PREFERENCES) ?? "auto",
     backend:

@@ -9,6 +9,7 @@ describe("parseAppConfig", () => {
       fixture: "face-center",
       mock: null,
       faceScale: "dynamic",
+      kaleidoscope: "on",
       output: "auto",
       backend: "auto",
     });
@@ -20,6 +21,7 @@ describe("parseAppConfig", () => {
       fixture: "face-center",
       mock: null,
       faceScale: "dynamic",
+      kaleidoscope: "on",
       output: "auto",
       backend: "auto",
     });
@@ -33,6 +35,7 @@ describe("parseAppConfig", () => {
       fixture: "face-offset",
       mock: "enter-exit",
       faceScale: "dynamic",
+      kaleidoscope: "on",
       output: "auto",
       backend: "auto",
     });
@@ -40,6 +43,10 @@ describe("parseAppConfig", () => {
 
   it("can restore Unity-compatible fixed face scaling", () => {
     expect(parseAppConfig("?faceScale=fixed").faceScale).toBe("fixed");
+  });
+
+  it("can bypass the kaleidoscope transformation", () => {
+    expect(parseAppConfig("?kaleidoscope=off").kaleidoscope).toBe("off");
   });
 
   it("accepts explicit HDR and SDR output overrides", () => {
@@ -53,12 +60,15 @@ describe("parseAppConfig", () => {
 
   it("falls back from unsupported values", () => {
     expect(
-      parseAppConfig("?input=video&fixture=unknown&mock=random"),
+      parseAppConfig(
+        "?input=video&fixture=unknown&mock=random&kaleidoscope=unknown",
+      ),
     ).toEqual({
       input: "camera",
       fixture: "face-center",
       mock: null,
       faceScale: "dynamic",
+      kaleidoscope: "on",
       output: "auto",
       backend: "auto",
     });

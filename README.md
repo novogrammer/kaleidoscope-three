@@ -36,6 +36,7 @@ npm test
 | `fixture` | `face-center`, `face-offset`, `no-face` | `face-center` | 使用する静止画を選ぶ |
 | `mock` | `center`, `enter-exit`, `move` | 指定なし | 指定時はMediaPipeを省略し、モック顔情報を使用する |
 | `faceScale` | `dynamic`, `fixed` | `dynamic` | 主レイヤーの三角形サイズを顔サイズへ連動、またはUnity版相当の固定値にする |
+| `kaleidoscope` | `on`, `off` | `on` | `off`で万華鏡変換を迂回し、元画像と紙吹雪を直接確認する |
 | `output` | `auto`, `sdr`, `hdr` | `auto` | HDR自動選択、SDR固定、HDR初期化の診断を切り替える |
 | `backend` | `auto`, `webgl2` | `auto` | WebGPU優先の自動選択、またはWebGL 2固定にする |
 
@@ -59,6 +60,9 @@ npm test
 
 ?input=camera&faceScale=fixed
   前面カメラを使い、Unity版相当の固定サイズで比較する
+
+?input=fixture&fixture=face-center&kaleidoscope=off
+  万華鏡変換を迂回し、元画像と紙吹雪へBloomを適用した状態を確認する
 ```
 
 `backend=webgl2`と`output=hdr`を同時に指定した場合はWebGL 2が優先され、SDR出力になる。

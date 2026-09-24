@@ -127,7 +127,11 @@ async function start(): Promise<void> {
         imageSource.height,
         cameraAvailable,
       );
-      renderer.configureBloom(sceneGraph.scene, sceneGraph.camera);
+      const kaleidoscopeEnabled = config.kaleidoscope === "on";
+      renderer.configureBloom(
+        kaleidoscopeEnabled ? sceneGraph.scene : sceneGraph.sourceScene,
+        kaleidoscopeEnabled ? sceneGraph.camera : sceneGraph.sourceCamera,
+      );
 
       resize = () => {
         const viewport = renderer.resize();
@@ -173,11 +177,13 @@ async function start(): Promise<void> {
             faceObservation,
           );
           sceneGraph.update(elapsedSeconds, frame);
-          renderer.renderToTarget(
-            sceneGraph.sourceScene,
-            sceneGraph.sourceCamera,
-            sceneGraph.sourceTarget,
-          );
+          if (kaleidoscopeEnabled) {
+            renderer.renderToTarget(
+              sceneGraph.sourceScene,
+              sceneGraph.sourceCamera,
+              sceneGraph.sourceTarget,
+            );
+          }
           renderer.renderBloom();
         }
       });
@@ -222,15 +228,17 @@ async function start(): Promise<void> {
 function formatInputStatus(value: ReturnType<typeof parseAppConfig>): string {
   const faceScale =
     value.faceScale === "dynamic" ? " / 顔サイズ連動" : "";
+  const kaleidoscope =
+    value.kaleidoscope === "off" ? " / 万華鏡なし" : "";
 
   if (value.input === "camera") {
     const face = value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
-    return `入力設定: 前面カメラ / ${face}${faceScale}`;
+    return `入力設定: 前面カメラ / ${face}${faceScale}${kaleidoscope}`;
   }
 
   const mock =
     value.mock === null ? "MediaPipe" : `モック / ${value.mock}`;
-  return `入力設定: ${value.fixture} / ${mock}${faceScale}`;
+  return `入力設定: ${value.fixture} / ${mock}${faceScale}${kaleidoscope}`;
 }
 
 function getElement<T extends HTMLElement>(id: string): T {
