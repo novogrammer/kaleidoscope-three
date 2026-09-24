@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CONFETTI_CAPACITY,
+  CONFETTI_LIFETIME_SECONDS,
   CONFETTI_PREWARM_SECONDS,
   CONFETTI_SPAWN_RATE,
   ConfettiSimulation,
@@ -51,20 +52,42 @@ describe("ConfettiSimulation", () => {
     );
   });
 
-  it("reaches full capacity after every particle has spawned", () => {
+  it("keeps the steady-state count at spawn rate times lifetime", () => {
     const simulation = new ConfettiSimulation(123);
     const state = createState();
     let activeCount = 0;
-    const elapsedSeconds =
-      (CONFETTI_CAPACITY - 1) / CONFETTI_SPAWN_RATE -
-      CONFETTI_PREWARM_SECONDS;
+    const elapsedSeconds = 40.001;
 
     for (let index = 0; index < simulation.capacity; index += 1) {
       simulation.sample(index, elapsedSeconds, state);
       if (state.active) activeCount += 1;
     }
 
-    expect(activeCount).toBe(CONFETTI_CAPACITY);
+    expect(activeCount).toBe(
+      CONFETTI_SPAWN_RATE * CONFETTI_LIFETIME_SECONDS,
+    );
+  });
+
+  it("reuses a slot for a later spawn event with new properties", () => {
+    const simulation = new ConfettiSimulation(123);
+    const firstState = createState();
+    const reusedState = createState();
+    const firstSlotSpawnTime = -CONFETTI_PREWARM_SECONDS;
+    const firstSlotReuseTime =
+      firstSlotSpawnTime + CONFETTI_CAPACITY / CONFETTI_SPAWN_RATE;
+
+    simulation.sample(0, firstSlotSpawnTime, firstState);
+    simulation.sample(
+      0,
+      firstSlotSpawnTime + CONFETTI_LIFETIME_SECONDS,
+      reusedState,
+    );
+    expect(reusedState.active).toBe(false);
+
+    simulation.sample(0, firstSlotReuseTime, reusedState);
+    expect(reusedState.active).toBe(true);
+    expect(reusedState.x).not.toBe(firstState.x);
+    expect(reusedState.rotation).not.toBe(firstState.rotation);
   });
 
   it("keeps the shader brightness above one in linear space", () => {

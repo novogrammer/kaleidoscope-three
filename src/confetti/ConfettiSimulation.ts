@@ -13,78 +13,90 @@ export type ConfettiParticleState = {
   colorIndex: number;
 };
 
-type ConfettiParticleDefinition = {
-  spawnX: number;
-  horizontalVelocity: number;
-  fallSpeed: number;
-  initialRotation: number;
-  angularVelocity: number;
-  flipOffset: number;
-  flipSpeed: number;
-  colorIndex: number;
-};
-
 const colorCount = 6;
 
 export class ConfettiSimulation {
   readonly capacity: number;
-  readonly #particles: readonly ConfettiParticleDefinition[];
+  readonly #seed: number;
 
   constructor(seed = 0x6b616c65, capacity = CONFETTI_CAPACITY) {
     this.capacity = capacity;
-
-    const random = createRandom(seed);
-    this.#particles = Array.from({ length: capacity }, () => ({
-      spawnX: random() * 2 - 1,
-      horizontalVelocity: (random() * 2 - 1) * 0.018,
-      fallSpeed: lerp(0.5, 1, random()),
-      initialRotation: random() * Math.PI * 2,
-      angularVelocity: degreesToRadians(lerp(-1800, 1800, random())),
-      flipOffset: random() * Math.PI * 2,
-      flipSpeed: lerp(5, 11, random()),
-      colorIndex: Math.min(colorCount - 1, Math.floor(random() * colorCount)),
-    }));
+    this.#seed = seed;
   }
 
   sample(index: number, elapsedSeconds: number, target: ConfettiParticleState): void {
-    const particle = this.#particles[index];
-
-    if (particle === undefined) {
+    if (!Number.isInteger(index) || index < 0 || index >= this.capacity) {
       throw new RangeError(`Confetti particle index is out of range: ${index}`);
     }
 
-    const firstSpawnTime = index / CONFETTI_SPAWN_RATE - CONFETTI_PREWARM_SECONDS;
-    const timeSinceFirstSpawn = elapsedSeconds - firstSpawnTime;
-
-    if (timeSinceFirstSpawn < 0) {
+    const latestSpawnEvent = Math.floor(
+      (elapsedSeconds + CONFETTI_PREWARM_SECONDS) * CONFETTI_SPAWN_RATE,
+    );
+    if (latestSpawnEvent < index) {
       target.active = false;
       return;
     }
 
-    const age = positiveModulo(timeSinceFirstSpawn, CONFETTI_LIFETIME_SECONDS);
+    // Spawn events use slots in order and wrap only at the capacity limit.
+    // Deriving the latest event for this slot keeps the result independent of
+    // frame rate without treating the slot-reuse interval as particle lifetime.
+    const capacityCycles = Math.floor(
+      (latestSpawnEvent - index) / this.capacity,
+    );
+    const spawnEvent = index + capacityCycles * this.capacity;
+    const spawnTime =
+      spawnEvent / CONFETTI_SPAWN_RATE - CONFETTI_PREWARM_SECONDS;
+    const age = elapsedSeconds - spawnTime;
+
+    if (age < 0 || age >= CONFETTI_LIFETIME_SECONDS) {
+      target.active = false;
+      return;
+    }
+
+    const spawnX = randomForSpawn(this.#seed, spawnEvent, 0) * 2 - 1;
+    const horizontalVelocity =
+      (randomForSpawn(this.#seed, spawnEvent, 1) * 2 - 1) * 0.018;
+    const fallSpeed = lerp(
+      0.5,
+      1,
+      randomForSpawn(this.#seed, spawnEvent, 2),
+    );
+    const initialRotation =
+      randomForSpawn(this.#seed, spawnEvent, 3) * Math.PI * 2;
+    const angularVelocity = degreesToRadians(
+      lerp(-1800, 1800, randomForSpawn(this.#seed, spawnEvent, 4)),
+    );
+    const flipOffset =
+      randomForSpawn(this.#seed, spawnEvent, 5) * Math.PI * 2;
+    const flipSpeed = lerp(
+      5,
+      11,
+      randomForSpawn(this.#seed, spawnEvent, 6),
+    );
+    const colorIndex = Math.min(
+      colorCount - 1,
+      Math.floor(randomForSpawn(this.#seed, spawnEvent, 7) * colorCount),
+    );
     const brightnessPhase = 1 - positiveModulo(age, 1);
     const brightnessEnvelope = 0.05 + Math.pow(brightnessPhase, 5) * 0.95;
 
     target.active = true;
-    target.x = particle.spawnX + particle.horizontalVelocity * age;
-    target.y = 1.1 - particle.fallSpeed * age * 0.1;
-    target.rotation = particle.initialRotation + particle.angularVelocity * age;
-    target.flip = particle.flipOffset + particle.flipSpeed * age;
+    target.x = spawnX + horizontalVelocity * age;
+    target.y = 1.1 - fallSpeed * age * 0.1;
+    target.rotation = initialRotation + angularVelocity * age;
+    target.flip = flipOffset + flipSpeed * age;
     target.brightness = brightnessEnvelope * 50;
-    target.colorIndex = particle.colorIndex;
+    target.colorIndex = colorIndex;
   }
 }
 
-function createRandom(seed: number): () => number {
-  let state = seed >>> 0;
-
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
+function randomForSpawn(seed: number, spawnEvent: number, channel: number): number {
+  let value = seed >>> 0;
+  value ^= Math.imul(spawnEvent + 1, 0x9e3779b1);
+  value ^= Math.imul(channel + 1, 0x85ebca6b);
+  value = Math.imul(value ^ (value >>> 16), 0x7feb352d);
+  value = Math.imul(value ^ (value >>> 15), 0x846ca68b);
+  return ((value ^ (value >>> 16)) >>> 0) / 4294967296;
 }
 
 function positiveModulo(value: number, divisor: number): number {
