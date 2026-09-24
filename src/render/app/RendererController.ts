@@ -94,7 +94,12 @@ export class RendererController {
       );
       hdrInitialized = false;
       renderer = this.#createRenderer(false);
-      await renderer.init();
+      try {
+        await renderer.init();
+      } catch (fallbackError) {
+        await renderer.dispose();
+        throw fallbackError;
+      }
     }
 
     const backend = renderer.backend as { isWebGPUBackend?: boolean };
